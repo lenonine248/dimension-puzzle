@@ -1,0 +1,1 @@
+{"schema":1,"id":"stage0202","name":"選ブ","tier":2,"order":202,"dims":{"W":3,"H":2,"D":3},"hint":"畳む向きで結果は変わる。カメラを回すか、床の矢印をクリックして向きを選ぼう。","voxels":[[0,0,0,"ground",false],[0,0,1,"ground",false],[0,0,2,"ground",false],[2,0,0,"ground",false],[2,0,1,"ground",false],[2,0,2,"ground",false],[0,1,0,"avatar",true],[2,1,1,"goal",false]],"par":2}

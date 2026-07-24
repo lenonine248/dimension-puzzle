@@ -1,0 +1,1 @@
+{"schema":1,"id":"stage0803","name":"交互","tier":8,"order":803,"dims":{"W":4,"H":2,"D":4},"hint":"z の溝は z で、x の溝は x で。畳む順番が道になる。","voxels":[[0,0,0,"ground",false],[1,0,0,"ground",false],[0,0,1,"ground",false],[1,0,1,"ground",false],[0,0,3,"ground",false],[1,0,3,"ground",false],[3,0,3,"ground",false],[0,1,0,"avatar",true],[3,1,3,"goal",false]],"par":5}

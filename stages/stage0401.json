@@ -1,0 +1,1 @@
+{"schema":1,"id":"stage0401","name":"押ス","tier":4,"order":401,"dims":{"W":5,"H":3,"D":1},"hint":"Shift＋移動で目の前のブロックを押す。押して、登って、足場にする。","voxels":[[0,0,0,"ground",false],[1,0,0,"ground",false],[2,0,0,"ground",false],[3,0,0,"ground",false],[4,0,0,"ground",false],[2,1,0,"push",false,1],[4,1,0,"ground",false],[0,1,0,"avatar",true],[4,2,0,"goal",false]],"par":4}

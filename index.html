@@ -1,0 +1,1982 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>奥行キ消失点 — VANISHING DEPTH</title>
+<style>
+  :root{ color-scheme:dark;
+    --bg:#121722;--bg2:#0c0f17;--panel:#1a2230;--line:#273142;--line2:#1d2533;
+    --ink:#e8ecf4;--mute:#8b96ab;--accent:#7aa2ff;
+    --c-ground:#5b6b86;--c-push:#caa468;--c-goal:#46c7a8;--c-hazard:#d2596b;--c-avatar:#ff8a5c;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:radial-gradient(120% 80% at 50% -10%,#18202e 0%,var(--bg) 55%,var(--bg2) 100%);color:var(--ink);font-family:var(--sans);min-height:100vh;}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 18px 36px;}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .title{font-size:17px;font-weight:650;} .title small{color:var(--mute);font-weight:500;font-size:12px;margin-left:8px;}
+  .phase{font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid var(--line);padding:3px 8px;border-radius:999px;}
+  .readout{font-family:var(--mono);font-size:12.5px;color:var(--mute);display:flex;gap:16px;flex-wrap:wrap;align-items:center;border:1px solid var(--line2);border-radius:10px;padding:9px 13px;margin-bottom:12px;background:rgba(12,15,23,.5);}
+  .readout b{color:var(--ink);} .readout .tag{color:var(--accent);} .count-av{color:var(--c-avatar);} .count-go{color:var(--c-goal);}
+  .grid{display:grid;grid-template-columns:1fr 232px;gap:14px;}
+  @media(max-width:720px){ .grid{grid-template-columns:1fr;} }
+  .stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#10151f,#0d1119);}
+  canvas{display:block;width:100%;height:auto;touch-action:none;}
+  .badge{position:absolute;top:12px;left:14px;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;color:var(--mute);text-transform:uppercase;}
+  .hint{position:absolute;bottom:10px;left:14px;right:14px;font-family:var(--mono);font-size:11px;color:var(--mute);opacity:.85;text-align:center;}
+  .tutHint{position:absolute;top:10px;left:50%;transform:translateX(-50%);max-width:86%;z-index:5;
+    font-size:12.5px;line-height:1.55;color:#dfe6f4;background:rgba(20,26,40,.88);border:1px solid #3a4566;border-radius:8px;
+    padding:7px 30px 7px 14px;text-align:center;display:flex;align-items:center;gap:8px;}
+  .tutHint #tutHintText{pointer-events:none;}
+  #tutHintClose{position:absolute;top:2px;right:4px;background:none;border:none;color:#8a97b6;font-size:15px;line-height:1;
+    padding:4px 7px;cursor:pointer;border-radius:6px;}
+  #tutHintClose:hover{color:#dfe6f4;background:rgba(255,255,255,.08);}
+  .panel{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#10151f,#0d1119);padding:12px;}
+  .panel .lab{font-family:var(--mono);font-size:11px;color:var(--mute);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+  .panel .ph{color:var(--mute);font-family:var(--mono);font-size:12px;opacity:.7;padding:30px 6px;text-align:center;}
+  .status{display:none;align-items:center;gap:12px;margin-top:12px;padding:11px 15px;border-radius:10px;font-family:var(--mono);font-size:13px;border:1px solid var(--line2);}
+  .status.show{display:flex;animation:fadeUp .28s ease;} .status.lose{color:var(--c-hazard);border-color:#5a2a33;background:rgba(210,89,107,.09);}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
+  .status.win{color:var(--c-goal);border-color:#235048;background:rgba(70,199,168,.09);} .status b{font-weight:700;letter-spacing:.6px;} .status .why{color:var(--mute);}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+  button{font-family:var(--sans);font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 13px;cursor:pointer;transition:border-color .12s;}
+  #optIconBtn{width:34px;height:34px;padding:0;border-radius:50%;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  button:hover:not(:disabled){border-color:var(--accent);} button:disabled{opacity:.4;cursor:not-allowed;} button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;} button.primary{background:#22304c;border-color:#33457085;}
+  button.hl{border-color:var(--accent);background:#22304c;box-shadow:0 0 0 1px var(--accent),0 0 14px rgba(122,162,255,.35);animation:pulse 1.6s ease-in-out infinite;}
+  select{font-family:var(--sans);font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;}
+  select:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  #editor .ed-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0;}
+  #editor label{font-size:12px;color:var(--mute);font-family:var(--mono);display:inline-flex;align-items:center;gap:5px;}
+  #editor input.dim{width:56px;} #editor input.meta{width:120px;}
+  #editor input{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;}
+  #editor .ed-slice{display:inline-flex;align-items:center;gap:6px;}
+  #editor .ed-main{display:flex;gap:14px;flex-wrap:wrap;}
+  #editor .ed-cell{border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,#10151f,#0d1119);padding:10px;}
+  #editor canvas{display:block;touch-action:none;background:transparent;}
+  #editor .ed-folds{display:flex;gap:10px;flex-wrap:wrap;}
+  #editor .swatch{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:12.5px;background:var(--panel);}
+  #editor .swatch.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+  #editor .swatch i{width:12px;height:12px;border-radius:3px;display:inline-block;}
+  #editor code{background:#0c0f17;border:1px solid var(--line2);border-radius:4px;padding:1px 4px;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 1px var(--accent),0 0 7px rgba(122,162,255,.25);}50%{box-shadow:0 0 0 1px var(--accent),0 0 17px rgba(122,162,255,.55);}}
+  .keyhint{font-family:var(--mono);font-size:10.5px;color:var(--mute);align-self:center;}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;font-size:12px;color:var(--mute);font-family:var(--mono);}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+  .note{color:var(--mute);font-size:12.5px;line-height:1.6;margin-top:16px;border-top:1px solid var(--line2);padding-top:14px;}
+  .solver-box{font-family:var(--mono);font-size:11.5px;line-height:1.6;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow-y:auto;margin:8px 0;}
+  .solver-box b{color:var(--accent);}
+  .parRef{color:var(--mute);font-size:11px;}
+  .resline{display:block;margin:7px 0 2px;font-size:13.5px;}
+  .resline .stars{color:#ffd579;letter-spacing:2px;margin-right:6px;}
+  .bdg{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:1px 7px;margin-left:7px;font-size:11px;color:var(--mute);vertical-align:1px;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:118px;z-index:55;display:none;
+    background:var(--panel);border:1px solid var(--accent);border-radius:11px;padding:11px 18px;font-size:13.5px;
+    box-shadow:0 8px 28px rgba(0,0,0,.4);max-width:min(520px,86vw);}
+  #statsOverlay{position:fixed;inset:0;z-index:60;background:rgba(6,8,13,.72);display:none;align-items:center;justify-content:center}
+  #statsOverlay .opts{margin:0;max-width:360px;width:min(360px,88vw);max-height:82vh;overflow:auto;padding:20px 22px}
+  .srow{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dashed var(--line2);padding:7px 0;font-size:13px;}
+  .srow b{font-variant-numeric:tabular-nums;}
+  .srow.vp b{color:var(--accent);}
+  .sStars{margin-left:auto;color:#ffd579;font-size:11px;letter-spacing:1.5px;flex-shrink:0;}
+  @keyframes hintGlowPulse{0%,100%{box-shadow:0 0 0 0 rgba(122,162,255,.0)}50%{box-shadow:0 0 14px 3px rgba(122,162,255,.7)}}
+  #toggle.hintGlow{animation:hintGlowPulse 1.1s ease-in-out infinite;border-color:var(--accent)!important;}
+  body.no-anim *{transition:none!important;animation:none!important;}
+  .opts{margin-top:12px;max-width:340px;}
+  .opts .optrow{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink);margin:9px 2px;}
+  .opts input[type=checkbox],.opts input[type=range]{accent-color:var(--accent);}
+  .opts input[type=range]{flex:1;min-width:110px;}
+  /* ===== タイトル / ステージ選択 ===== */
+  .overlay{position:fixed;inset:0;z-index:40;background:#0b0d12;display:flex;align-items:center;justify-content:center;overflow:auto}
+  #titleCv{position:absolute;inset:0;width:100%;height:100%}
+  .tWrap{position:relative;text-align:center;padding:24px}
+  .tSub{font-size:12px;letter-spacing:.5em;color:#8fa0bd;margin-bottom:14px}
+  .tName{font-size:52px;letter-spacing:.14em;color:#e8edf7;font-weight:700;text-shadow:0 0 24px rgba(122,162,255,.25)}
+  .tName .tKa{color:#7aa2ff}
+  .tEn{font-size:12px;letter-spacing:.42em;color:#5f6f8e;margin:12px 0 40px}
+  .tMenu{display:flex;flex-direction:column;gap:12px;align-items:center}
+  .tBtn{min-width:230px;padding:11px 22px;font-size:14px;letter-spacing:.22em;color:#cfd8ea;background:rgba(28,33,46,.75);
+    border:1px solid #39435c;border-radius:4px;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
+  .tBtn:hover{border-color:#7aa2ff;color:#fff;background:rgba(40,48,68,.9)}
+  .tBtn.small{min-width:0;padding:7px 14px;font-size:12px;letter-spacing:.1em}
+  .tFoot{margin-top:44px;font-size:10px;letter-spacing:.3em;color:#3f4a61}
+  .sWrap{position:relative;width:min(680px,92vw);max-height:88vh;overflow:auto;padding:26px;background:rgba(16,19,27,.92);
+    border:1px solid #2c3550;border-radius:8px}
+  .sHead{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+  .sTitle{font-size:16px;letter-spacing:.3em;color:#dfe6f4}
+  .sTierHead{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;
+    font-size:12px;letter-spacing:.2em;color:#7186ab;margin:14px 0 8px;border:none;border-bottom:1px solid #2b3450;
+    padding:14px 6px;background:none;border-radius:6px;cursor:pointer;}
+  .sTierHead:hover{color:#a9b8d9;background:rgba(255,255,255,.04)}
+  .sTierHead .sTierName{display:flex;align-items:center;gap:8px}
+  .sTierHead .sTierProg{font-size:13px;font-weight:600;color:#8b98b8;letter-spacing:.05em;display:flex;align-items:center;gap:2px}
+  .sTierHead .sTierProg.allClear{color:#46c7a8}
+  .sTierHead .sTierArrow{font-size:10px;transition:transform .15s;color:#5a6785}
+  .sTierHead.collapsed .sTierArrow{transform:rotate(-90deg)}
+  .sTierBody{overflow:hidden}
+  .sTierBody.collapsed{display:none}
+  .sItem{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 14px;margin:6px 0;font-size:13px;
+    color:#cfd8ea;background:rgba(30,36,52,.6);border:1px solid #333e5c;border-radius:5px;cursor:pointer;transition:border-color .15s}
+  .sItem:hover{border-color:#7aa2ff}
+  .sItem.locked{color:#5a6580;cursor:default;background:rgba(22,26,38,.6)}
+  .sItem.locked:hover{border-color:#333e5c}
+  .sMark{width:1.4em;text-align:center;color:#46c7a8}
+  .sItem.locked .sMark{color:#5a6580}
+  #optOverlay{position:fixed;inset:0;z-index:60;background:rgba(6,8,13,.72);display:none;align-items:center;justify-content:center}
+  #optOverlay .opts{margin:0;max-width:340px;width:min(340px,88vw);max-height:82vh;overflow:auto;padding:20px 22px}
+  #optClose{margin-top:16px;width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="title">奥行キ消失点 <small>— VANISHING DEPTH / 次元圧縮パズル</small></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="phase" id="devBadge" style="display:none">DEV MODE</div>
+      <button id="optIconBtn" title="オプション" aria-label="オプション" style="display:none">⚙</button>
+    </div>
+  </header>
+  <div id="titleScreen" class="overlay">
+    <canvas id="titleCv"></canvas>
+    <div class="tWrap">
+      <div class="tSub">次元圧縮パズル</div>
+      <div class="tName">奥行<span class="tKa">キ</span>消失点</div>
+      <div class="tEn">— VANISHING DEPTH —</div>
+      <div class="tMenu">
+        <button class="tBtn" id="mStage">ステージモード</button>
+        <button class="tBtn" id="mOpt">オプション</button>
+        <button class="tBtn" id="mStats">記録</button>
+        <button class="tBtn" id="mEdit" style="display:none">エディターモード</button>
+      </div>
+      <div class="tFoot">DIMENSION COMPRESSION PUZZLE</div>
+    </div>
+  </div>
+  <div id="selectScreen" class="overlay" style="display:none">
+    <div class="sWrap">
+      <div class="sHead"><button class="tBtn small" id="sBack">← タイトル</button><div class="sTitle">ステージ選択</div></div>
+      <div id="stageList"></div>
+    </div>
+  </div>
+  <div id="playView">
+  <div class="readout" id="readout"></div>
+  <div class="grid">
+    <div class="stage"><div class="badge" id="badge">3D</div><div class="tutHint" id="tutHint" style="display:none"><span id="tutHintText"></span><button id="tutHintClose" title="ヒントを閉じる" aria-label="ヒントを閉じる">×</button></div><canvas id="cv" width="600" height="460"></canvas><div class="hint" id="hint"></div></div>
+    <div class="panel"><div class="lab">畳み結果プレビュー</div><canvas id="pv" width="216" height="216"></canvas><div class="ph" id="ph" style="display:none">2D編集中</div></div>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="toast" id="moveToast"></div>
+  <div class="controls">
+    <button id="toggle" class="primary">次元を切り替え</button>
+    <button id="auto">カメラ追従に戻す</button>
+    <button id="undo">ひとつ戻す</button>
+    <button id="reset">最初に戻す</button>
+    <button id="hintBtn" title="ヒントの表示/非表示">ヒント</button>
+    <button id="nextMoveBtn" title="現在の盤面から、最短解の最初の一手だけを計算して表示します">次の一手</button>
+    <button id="titleBtn">ステージセレクトへ</button>
+    <button id="editBtn">エディタ</button>
+    <button id="backEdit" style="display:none">編集に戻る</button>
+    <button id="recIntended" style="display:none">想定解の記録: OFF</button>
+    <span class="keyhint" id="keyhint"></span>
+  </div>
+  <div id="statsOverlay">
+    <div class="panel opts">
+      <div class="lab">記録</div>
+      <div id="statsBody"></div>
+      <button id="statsClose" class="primary" style="margin-top:14px;width:100%">閉じる</button>
+    </div>
+  </div>
+  <div id="optOverlay">
+    <div class="panel opts" id="optPanel">
+      <div class="lab">オプション</div>
+      <label class="optrow"><input type="checkbox" id="optSound"> サウンド</label>
+      <label class="optrow">音量 <input type="range" id="optVol" min="0" max="100" step="5"></label>
+      <label class="optrow"><input type="checkbox" id="optAnim"> アニメーション演出</label>
+      <label class="optrow"><input type="checkbox" id="optShake"> 画面の揺れ</label>
+      <button id="optClose" class="tBtn small">閉じる</button>
+    </div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--c-ground)"></i>地面</span><span><i style="background:var(--c-push)"></i>押せる</span>
+    <span><i style="background:var(--c-goal)"></i>ゴール</span><span><i style="background:var(--c-hazard)"></i>障害物</span><span><i style="background:var(--c-avatar)"></i>アバター</span>
+  </div>
+  </div><!-- /playView -->
+
+  <div id="editor" style="display:none">
+    <div class="ed-bar" id="edPalette"></div>
+    <div class="ed-bar">
+      <label>スライス軸
+        <select id="edAxis"><option value="y">Y（水平レイヤー）</option><option value="z">Z（正面）</option><option value="x">X（側面）</option></select>
+      </label>
+      <span class="ed-slice"><button id="edPrev">◀</button><span id="edIdx" class="keyhint"></span><button id="edNext">▶</button></span>
+      <label>W<input id="edW" type="number" min="1" max="12" class="dim"></label>
+      <label>H<input id="edH" type="number" min="1" max="12" class="dim"></label>
+      <label>D<input id="edD" type="number" min="1" max="12" class="dim"></label>
+    </div>
+    <div class="ed-main">
+      <div class="ed-cell"><div class="lab" id="edGridLab">スライス編集</div><canvas id="edGrid" width="420" height="360"></canvas></div>
+      <div class="ed-cell"><div class="lab">3Dプレビュー（ドラッグ回転）</div><canvas id="ed3d" width="300" height="300"></canvas></div>
+    </div>
+    <div class="ed-cell"><div class="lab">4方向 畳みプレビュー</div><div class="ed-folds" id="edFolds"></div></div>
+    <div class="ed-cell"><div class="lab">ソルバー（開発者用）</div>
+      <div class="ed-bar">
+        <label class="optrow" style="margin:0"><input type="checkbox" id="edSolverSwap">数字入れ替え(swap)を探索に含める</label>
+        <label class="optrow" style="margin:0"><input type="checkbox" id="edSolverDeadlock">詰み検出を行う</label>
+      </div>
+      <div class="ed-bar">
+        <label>状態数上限<input id="edSolverStateCap" type="number" min="1000" max="2000000" step="1000" class="dim" style="width:88px" value="200000"></label>
+        <label>時間上限(秒)<input id="edSolverTimeCap" type="number" min="1" max="120" class="dim" style="width:60px" value="15"></label>
+      </div>
+      <div class="ed-bar">
+        <button id="edSolverRun" class="primary">解を探す</button>
+        <button id="edSolverCheck">設計チェック</button>
+        <button id="edSolverReplay" disabled>解を再生</button>
+        <button id="edSolverCancel" disabled>探索を中止</button>
+        <span class="keyhint" id="edSolverProgress"></span>
+      </div>
+      <pre class="solver-box" id="edSolverResult">まだ探索していません。</pre>
+    </div>
+    <div class="ed-bar">
+      <label>id<input id="edId" type="text" class="meta"></label>
+      <label>名前<input id="edName" type="text" class="meta"></label>
+      <label>ヒント<input id="edHint" type="text" class="meta" placeholder="（チュートリアル文・省略可）"></label>
+      <label>順<input id="edOrder" type="number" class="dim"></label>
+      <span class="lab" style="margin-left:8px">畳む向き</span>
+      <label class="optrow" style="margin:0"><input type="checkbox" id="edFold+z">+z</label>
+      <label class="optrow" style="margin:0"><input type="checkbox" id="edFold-z">-z</label>
+      <label class="optrow" style="margin:0"><input type="checkbox" id="edFold+x">+x</label>
+      <label class="optrow" style="margin:0"><input type="checkbox" id="edFold-x">-x</label>
+      <label class="optrow" style="margin:0"><input type="checkbox" id="edSwapAllow">数字入れ替え可</label>
+      <label class="optrow" style="margin:0"><input type="checkbox" id="edWalls">周囲・天井に壁あり</label>
+      <button id="edExport" class="primary">JSON書き出し</button>
+      <button id="edImport">読み込み</button><input id="edFile" type="file" accept="application/json,.json" style="display:none">
+      <button id="edTest">テストプレイ</button>
+      <button id="edExit">プレイに戻る</button>
+    </div>
+    <p class="note" id="edNote">スライス面のマスをクリックで配置／消去（消しゴム選択時は消去）。パレットで種類と重力を選択。<b>3Dプレビューでは、Shiftキーを押している間はカメラ操作が止まり、既存ブロックの面をクリックするとその面の外側にパレット選択で新規配置（既に何かある位置には置かない）、消しゴム選択中はクリックしたブロック自体を消去します</b>（スライス編集グリッドにも即座に反映）。<b>押せるブロックは既定で単体（バラバラ）です。「連結ツール」を選び、面で隣接する押せるブロック2つを順にクリックすると連結／分割をトグルします</b>（未連結なら2つのグループを統合、連結済みならそのグループ全体を単体化。任意の形に連結可）。連結グループはスライス上で青い輪郭、3Dプレビューで一体（境界線なし）で表示されます。軸とインデックスでスライスを移動。JSON書き出しでステージを保存し、<code>stages/</code>に置いて<code>build_stages.py</code>を実行。開発時は <code>?dev</code> でフォルダから読み込めます。</p>
+  </div>
+</div>
+
+<script src="stages.js"></script>
+<script>
+/* ===== ENGINE ===== */
+const Engine=(function(){
+  const key=(x,y,z)=>x+","+y+","+z;
+  function makeWorld(W,H,D,open){return{W,H,D,vox:new Map(),open:!!open};}
+  function setVox(w,x,y,z,t,g,id,grp){ if(t==null)w.vox.delete(key(x,y,z)); else w.vox.set(key(x,y,z),{t,g:!!g,id:id||0,grp:grp==null?null:grp}); }
+  function getVox(w,x,y,z){return w.vox.get(key(x,y,z))||null;}
+  function depthInfo(w,a){return a==='z'?{Dlen:w.D,W2:w.W,H2:w.H}:{Dlen:w.W,W2:w.D,H2:w.H};}
+  function coord(a,h,y,d){return a==='z'?[h,y,d]:[d,y,h];}
+  function compress(w,a,f){const di=depthInfo(w,a),cells=new Map();
+    for(let h=0;h<di.W2;h++)for(let y=0;y<di.H2;y++){let count=0,t=null,g=false,fo=false;
+      const seq=[];for(let d=0;d<di.Dlen;d++)seq.push(d);if(f==='max')seq.reverse();
+      for(const d of seq){const[x,yy,z]=coord(a,h,y,d);const v=getVox(w,x,yy,z);if(v){count++;if(!fo){fo=true;t=v.t;g=v.g;}}}
+      if(count>0)cells.set(h+","+y,{t,count,g});}
+    return{depthAxis:a,front:f,Dlen:di.Dlen,W2:di.W2,H2:di.H2,cells,open:!!w.open};}
+  function reconstruct(g,dims){const w=makeWorld(dims.W,dims.H,dims.D,g.open);const{depthAxis,front,Dlen}=g; let nid=1;
+    for(const[k,c]of g.cells){const[h,y]=k.split(",").map(Number);const n=Math.min(c.count,Dlen);
+      const blockId=c.t==='avatar'?0:nid++;
+      for(let i=0;i<n;i++){const d=front==='min'?i:(Dlen-1-i);const[x,yy,z]=coord(depthAxis,h,y,d);
+        setVox(w,x,yy,z,c.t,c.g,c.t==='avatar'?nid++:blockId);}}
+    return w;}
+  function gravitySettle(g){const cells=g.cells;
+    for(let h=0;h<g.W2;h++){const slot=new Array(g.H2).fill(null);
+      for(let y=0;y<g.H2;y++){const c=cells.get(h+","+y);if(c)slot[y]=c;}
+      let ch=true;while(ch){ch=false;
+        for(let y=1;y<g.H2;y++){const c=slot[y];if(c&&c.g&&c.t!=='avatar'&&slot[y-1]===null){slot[y-1]=c;slot[y]=null;ch=true;}}
+        if(slot[0]&&slot[0].g&&slot[0].t!=='avatar'){slot[0]=null;ch=true;} // 支えなし(y=0)の重力ブロックは場外へ消滅
+      }
+      for(let y=0;y<g.H2;y++){const k=h+","+y;if(slot[y])cells.set(k,slot[y]);else cells.delete(k);}}
+    return g;}
+  // 連結グループ（同一id、押せるブロックの連結や旧来の隣接連結成分）は1つの剛体として重力を解決する。
+  // どこか1点でも「グループ外の何か」が直下に支えていれば、グループ全体は不動（一部だけ穴の上でも消えない）。
+  // グループのどこにも支えが無ければ、全体で1段ずつ揃って落下し、これ以上落とせなければ全体が消滅する。
+  // グループ内に重力なしメンバーが混ざる場合は、その静的な部分に引きずられて全体を不動として扱う。
+  function gravitySettle3D(w){
+    let changed=true;
+    while(changed){ changed=false;
+      const groups=new Map(); // id -> [[x,y,z],...]（アバターは対象外＝別処理）
+      for(const[k,v]of w.vox){ if(v.t==='avatar')continue; const[x,y,z]=k.split(",").map(Number);
+        if(!groups.has(v.id))groups.set(v.id,[]); groups.get(v.id).push([x,y,z]); }
+      for(const[id,members]of groups){
+        let allGrav=true; for(const[x,y,z]of members){ if(!getVox(w,x,y,z).g){allGrav=false;break;} }
+        if(!allGrav)continue; // 静的メンバーを含む＝グループ全体を固定として扱う
+        let supported=false;
+        for(const[x,y,z]of members){ const below=getVox(w,x,y-1,z);
+          if(below&&below.id!==id){supported=true;break;} } // 自グループ以外の何かが直下にあれば支えあり
+        if(supported)continue;
+        if(members.some(m=>m[1]===0)){ // これ以上落とせない(誰かがy=0)のに支えが無い→グループごと消滅
+          for(const[x,y,z]of members)setVox(w,x,y,z,null);
+          changed=true; continue; }
+        const datas=members.map(([x,y,z])=>getVox(w,x,y,z));           // 全員を退避してから1段下に再設置（自己衝突回避）
+        for(const[x,y,z]of members)setVox(w,x,y,z,null);
+        for(let i=0;i<members.length;i++){const[x,y,z]=members[i];setVox(w,x,y-1,z,datas[i].t,datas[i].g,datas[i].id,datas[i].grp);}
+        changed=true;
+      }
+    }
+    return w;}
+  function countType(w,t){let c=0;for(const v of w.vox.values())if(v.t===t)c++;return c;}
+  function cloneGrid(g){const c={...g,cells:new Map(),open:!!g.open};for(const[k,v]of g.cells)c.cells.set(k,{t:v.t,count:v.count,g:v.g});return c;}
+  function cloneWorld(w){const n=makeWorld(w.W,w.H,w.D,w.open);for(const[k,v]of w.vox)n.vox.set(k,{t:v.t,g:v.g,id:v.id,grp:v.grp==null?null:v.grp});return n;}
+  function assignIds(w){let next=1;const seen=new Set();const grpId=new Map();
+    for(const key of[...w.vox.keys()]){const v=w.vox.get(key);            // 明示グループ(grp)を持つ押せるブロック → グループ単位で同一ID
+      if(v.t==='push'&&v.grp!=null){ if(!grpId.has(v.grp))grpId.set(v.grp,next++); v.id=grpId.get(v.grp); seen.add(key);}}
+    for(const key of[...w.vox.keys()]){ if(seen.has(key))continue; const v=w.vox.get(key);   // 残り: grpなしは連結成分・アバターは個別
+      if(v.t==='avatar'){v.id=next++;seen.add(key);continue;}
+      const id=next++,stack=[key];seen.add(key);
+      while(stack.length){const ck=stack.pop(),cv=w.vox.get(ck);cv.id=id;const[x,y,z]=ck.split(",").map(Number);
+        for(const[dx,dy,dz]of[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]){const nk=(x+dx)+","+(y+dy)+","+(z+dz);
+          if(!seen.has(nk)){const nv=w.vox.get(nk);if(nv&&nv.t===v.t&&nv.t!=='avatar'&&!(nv.t==='push'&&nv.grp!=null)){seen.add(nk);stack.push(nk);}}}}}
+    return w;}
+  return{makeWorld,setVox,getVox,compress,reconstruct,gravitySettle,gravitySettle3D,assignIds,countType,cloneGrid,cloneWorld};
+})();
+
+/* ===== GAME (2D) ===== */
+const Game=(function(){
+  const SOLID=new Set(['ground','push']);
+  function cell(g,h,y){return g.cells.get(h+","+y)||null;}
+  function setCell(g,h,y,c){const k=h+","+y;if(c)g.cells.set(k,c);else g.cells.delete(k);}
+  const isSolid=c=>!!c&&SOLID.has(c.t);
+  function avatarCells(g){const a=[];for(const[k,c]of g.cells)if(c.t==='avatar'){const[h,y]=k.split(",").map(Number);a.push({h,y});}return a;}
+  function counts(g){let av=0,go=0;for(const c of g.cells.values()){if(c.t==='avatar')av+=c.count;if(c.t==='goal')go+=c.count;}return{av,go};}
+  function fall(g,h,y){while(true){if(y-1<0)return{y:y-1,dead:true};const b=cell(g,h,y-1);
+    if(isSolid(b))return{y};if(b&&b.t==='avatar')return{y};if(b&&b.t==='goal')return{y:y-1,win:true};if(b&&b.t==='hazard')return{y:y-1,dead:true};y--;}}
+  // 案A: 押せるセルを(dir)方向へ1マス押す。連鎖なし。直上の非アバターセルは縦キャリー（行けなければ置き去り）。
+  function pushCell(g,h,y,dir){const blk=cell(g,h,y);if(!blk||blk.t!=='push')return false;
+    const nh=h+dir; if((!g.open&&(nh<0||nh>=g.W2))||cell(g,nh,y))return false;
+    // 上に積まれた「重力あり」セルだけを再帰的に追従させる（3Dと同仕様）。
+    // 移動先が塞がっている段が見つかったら、その段とそれより上は置き去り。
+    const movers=[[y,blk]];
+    let yy=y+1;
+    while(true){const up=cell(g,h,yy);
+      if(!(up&&up.t!=='avatar'&&up.g))break;
+      if(cell(g,nh,yy))break;
+      movers.push([yy,up]); yy++;}
+    for(const[my]of movers)setCell(g,h,my,null);
+    for(const[my,mc]of movers)setCell(g,nh,my,mc);
+    return true;}
+  function move(g,dir,mode){                                   // mode: 'push'=Shift（押すのみ） / 'climb'=修飾なし（登る・押さない）
+    mode=mode||'climb';
+    const avs=avatarCells(g).sort((a,b)=>((b.h*dir)-(a.h*dir)));
+    let win=false,dead=false;
+    for(const a of avs){
+      const here=cell(g,a.h,a.y); if(!here||here.t!=='avatar')continue;
+      const nh=a.h+dir;
+      if(!g.open&&(nh<0||nh>=g.W2))continue;
+      let tc=cell(g,nh,a.y);
+      let ny=a.y;
+      let pushed=false;
+      if(mode==='push'){
+        pushed=!!(tc&&tc.t==='push'&&pushCell(g,nh,a.y,dir));  // 押せた場合はそのまま前進、押せなければ下でclimbにフォールバック
+      }
+      if(!pushed){                                            // climb、またはpushが失敗した場合のフォールバック: 登れなければ何もしない
+        if(tc&&(tc.t==='ground'||tc.t==='push'||tc.t==='avatar')){
+          if((g.open||a.y+1<g.H2)&&cell(g,nh,a.y+1)===null&&cell(g,a.h,a.y+1)===null) ny=a.y+1; else continue;
+        }
+      }
+      const data=here; setCell(g,a.h,a.y,null);
+      const dest=cell(g,nh,ny);
+      if(dest&&dest.t==='goal'){win=true;setCell(g,nh,ny,data);continue;}
+      if(dest&&dest.t==='hazard'){dead=true;continue;}
+      const f=fall(g,nh,ny);
+      if(f.dead){dead=true;continue;} if(f.win){win=true;setCell(g,nh,f.y,data);continue;}
+      setCell(g,nh,f.y,data);
+    }
+    return{win,dead};}
+  function swap(g,h1,y1,h2,y2){if(Math.abs(h1-h2)+Math.abs(y1-y2)!==1)return false;const a=cell(g,h1,y1),b=cell(g,h2,y2);if(!a||!b)return false;if(a.t!=='avatar'&&b.t!=='avatar')return false;const t=a.count;a.count=b.count;b.count=t;return true;}
+  // 全アバターを支えまで落とす（次元切替時用）。歩行時のfall()と同じ判定：ゴールで勝利、障害物・場外で消滅。
+  function gravityDropAvatars(g){
+    const avs=avatarCells(g).sort((a,b)=>a.y-b.y); // 下にいる個体から処理（積み上げ順を保つ）
+    let win=false,dead=false;
+    for(const a of avs){
+      const here=cell(g,a.h,a.y); if(!here||here.t!=='avatar')continue;
+      const f=fall(g,a.h,a.y);
+      if(f.dead){ setCell(g,a.h,a.y,null); dead=true; continue; }
+      if(f.win){ setCell(g,a.h,a.y,null); setCell(g,a.h,f.y,here); win=true; continue; }
+      if(f.y!==a.y){ setCell(g,a.h,a.y,null); setCell(g,a.h,f.y,here); }
+    }
+    return{win,dead};}
+  return{cell,setCell,isSolid,avatarCells,counts,move,swap,pushCell,gravityDropAvatars};
+})();
+
+/* ===== GAME3D (3D歩行＋押す) ===== */
+const Game3D=(function(){
+  const SOLID=new Set(['ground','push']);
+  const at=(w,x,y,z)=>w.vox.get(x+","+y+","+z)||null;
+  const isSolid=c=>!!c&&SOLID.has(c.t);
+  function avatars(w){const a=[];for(const[k,v]of w.vox)if(v.t==='avatar'){const[x,y,z]=k.split(",").map(Number);a.push({x,y,z});}return a;}
+  function counts(w){let av=0,go=0;for(const v of w.vox.values()){if(v.t==='avatar')av++;if(v.t==='goal')go++;}return{av,go};}
+  function blockVox(w,id){const a=[];for(const[k,v]of w.vox)if(v.id===id&&v.t!=='avatar'){const[x,y,z]=k.split(",").map(Number);a.push({x,y,z});}return a;}
+  // 案A: 押せるブロックidを(dx,dz)方向へ1マス押す。連鎖なし。上に乗るブロックは縦キャリー（行けなければ置き去り）。成功でtrue。
+  function pushBlock(w,id,dx,dz){
+    const B=blockVox(w,id); if(!B.length)return false;
+    const movers=new Map(); movers.set(id,B);
+    // 真上に乗っている「重力ありのブロック」だけを追従対象に加える。重力なしは追従しない。
+    // 追加したブロックのさらに上も同様に調べ、何段重なっていても再帰的に追従させる。
+    // 各追従ブロックについて「どのブロックの上に載って追従したか（親）」を記録し、
+    // 移動先が塞がって置き去りにする際に、その上に載っていた子孫も連動して置き去りにできるようにする。
+    const parent=new Map(); // childId -> parentId（idは親を持たない）
+    let riderChanged=true;
+    while(riderChanged){ riderChanged=false;
+      for(const[mid,arr]of[...movers]){
+        for(const v of arr){ const up=at(w,v.x,v.y+1,v.z);
+          if(up&&up.t!=='avatar'&&up.g&&!movers.has(up.id)){ movers.set(up.id,blockVox(w,up.id)); parent.set(up.id,mid); riderChanged=true; } } } }
+    const dropRider=(rid)=>{ // 置き去り: そのブロックと、それに（親子連鎖で）載っている子孫をmoversから外す
+      if(!movers.has(rid))return; movers.delete(rid);
+      for(const[cid,pid]of[...parent]) if(pid===rid) dropRider(cid); };
+    const moverKeys=()=>{const s=new Set();for(const arr of movers.values())for(const v of arr)s.add(v.x+","+v.y+","+v.z);return s;};
+    let changed=true;
+    while(changed){changed=false;const mk=moverKeys();
+      for(const[mid,arr]of[...movers]){let okm=true;
+        for(const v of arr){const nx=v.x+dx,nz=v.z+dz;
+          if(!w.open&&(nx<0||nx>=w.W||nz<0||nz>=w.D)){okm=false;break;}
+          const dk=nx+","+v.y+","+nz; if(w.vox.get(dk)&&!mk.has(dk)){okm=false;break;}}
+        if(!okm){ if(mid===id)return false; dropRider(mid); changed=true; break; }}}
+    const moved=[];
+    for(const arr of movers.values())for(const v of arr)moved.push({v,data:w.vox.get(v.x+","+v.y+","+v.z)});
+    for(const m of moved)w.vox.delete(m.v.x+","+m.v.y+","+m.v.z);
+    for(const m of moved)w.vox.set((m.v.x+dx)+","+m.v.y+","+(m.v.z+dz),m.data);
+    return true;
+  }
+  function fall(w,x,y,z){while(true){if(y-1<0)return{y:y-1,dead:true};const b=at(w,x,y-1,z);
+    if(isSolid(b))return{y};if(b&&b.t==='avatar')return{y};if(b&&b.t==='goal')return{y:y-1,win:true};if(b&&b.t==='hazard')return{y:y-1,dead:true};y--;}}
+  function move(w,dx,dz,mode){                                     // mode: 'push'=Shift（押すのみ） / 'climb'=修飾なし（登る・押さない）
+    mode=mode||'climb';
+    const avs=avatars(w).sort((a,b)=>((b.x*dx+b.z*dz)-(a.x*dx+a.z*dz))); // 進行方向の前にいる個体から
+    let win=false,dead=false;
+    for(const a of avs){
+      const here=at(w,a.x,a.y,a.z); if(!here||here.t!=='avatar')continue;
+      const nx=a.x+dx,nz=a.z+dz;
+      if(!w.open&&(nx<0||nx>=w.W||nz<0||nz>=w.D))continue;            // 壁
+      let tc=at(w,nx,a.y,nz);
+      let ny=a.y;
+      let pushed=false;
+      if(mode==='push'){
+        pushed=!!(tc&&tc.t==='push'&&pushBlock(w,tc.id,dx,dz));  // 押せた場合はそのまま前進、押せなければ下でclimbにフォールバック
+      }
+      if(!pushed){                                              // climb、またはpushが失敗した場合のフォールバック: 登れなければ何もしない
+        if(tc&&(tc.t==='ground'||tc.t==='push'||tc.t==='avatar')){
+          if((w.open||a.y+1<w.H)&&!at(w,nx,a.y+1,nz)&&!at(w,a.x,a.y+1,a.z)) ny=a.y+1; else continue;
+        }
+      }
+      const data=here; w.vox.delete(a.x+","+a.y+","+a.z);
+      const dest=at(w,nx,ny,nz);
+      if(dest&&dest.t==='goal'){win=true;w.vox.set(nx+","+ny+","+nz,data);continue;}
+      if(dest&&dest.t==='hazard'){dead=true;continue;}
+      const f=fall(w,nx,ny,nz);
+      if(f.dead){dead=true;continue;} if(f.win){win=true;w.vox.set(nx+","+f.y+","+nz,data);continue;}
+      w.vox.set(nx+","+f.y+","+nz,data);
+    }
+    return{win,dead};
+  }
+  // 全アバターを支えまで落とす（次元切替時用）。歩行時のfall()と同じ判定：ゴールで勝利、障害物・場外で消滅。
+  function gravityDropAvatars(w){
+    const avs=avatars(w).sort((a,b)=>a.y-b.y);
+    let win=false,dead=false;
+    for(const a of avs){
+      const here=at(w,a.x,a.y,a.z); if(!here||here.t!=='avatar')continue;
+      const f=fall(w,a.x,a.y,a.z);
+      if(f.dead){ w.vox.delete(a.x+","+a.y+","+a.z); dead=true; continue; }
+      if(f.win){ w.vox.delete(a.x+","+a.y+","+a.z); w.vox.set(a.x+","+f.y+","+a.z,here); win=true; continue; }
+      if(f.y!==a.y){ w.vox.delete(a.x+","+a.y+","+a.z); w.vox.set(a.x+","+f.y+","+a.z,here); }
+    }
+    return{win,dead};}
+  return{avatars,counts,move,pushBlock,blockVox,at,isSolid,gravityDropAvatars};
+})();
+
+/* ===== CAMERA MATH ===== */
+const V={sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+  cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],
+  norm:a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l];}};
+function basis(yaw,pitch){const dir=[Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)];
+  const f=[-dir[0],-dir[1],-dir[2]],r=V.norm(V.cross(f,[0,1,0])),u=V.cross(r,f);return{dir,f,r,u};}
+function nearestFront(yaw,allow){const h=[Math.sin(yaw),Math.cos(yaw)],cand={'+x':[1,0],'-x':[-1,0],'+z':[0,1],'-z':[0,-1]};
+  let best=null,bd=-1e9;for(const k in cand){ if(allow&&allow[k]===false)continue; const d=h[0]*cand[k][0]+h[1]*cand[k][1];if(d>bd){bd=d;best=k;}}
+  if(best)return best; for(const k in cand)if(!allow||allow[k]!==false)return k; return '+z'; }
+const FOLD={'+z':{axis:'z',front:'max',rev:false},'-z':{axis:'z',front:'min',rev:true},
+            '+x':{axis:'x',front:'max',rev:true},'-x':{axis:'x',front:'min',rev:false}};
+
+/* ===== SOLVER (エディタ用: 判定・設計不良検出) =====
+   solver_spec.md に準拠。実エンジン関数(Engine/Game/Game3D)をクローン盤面上でそのまま呼び、
+   判定ロジックを二重実装しない。ノードは {mode:'3d',world,dims} または {mode:'2d',grid,dims,foldFront}。 */
+const Solver=(function(){
+  const now=()=>(typeof performance!=='undefined'?performance.now():Date.now());
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+  /* --- 状態キー（重複除去）: 内部id/grpは圧縮→再構成で振り直されるため含めない。座標と種別（2Dは個数も）で同一性を判定 --- */
+  function key3D(w){ const parts=[]; for(const[k,v]of w.vox)parts.push(v.t[0]+k); parts.sort(); return '3|'+parts.join('|'); }
+  function key2D(g){ const parts=[]; for(const[k,v]of g.cells)parts.push(v.t[0]+k+'x'+v.count); parts.sort(); return '2|'+g.depthAxis+g.front+'|'+parts.join('|'); }
+  function keyOf(node){ return node.mode==='3d'?key3D(node.world):key2D(node.grid); }
+
+  /* --- 勝敗ステータス: 実際の checkStatus(ev) と同じ規則（win優先、その次に総数0で敗北） --- */
+  function statusOf(node,winFlag){
+    if(winFlag)return 'win';
+    const c=node.mode==='3d'?{av:Engine.countType(node.world,'avatar'),go:Engine.countType(node.world,'goal')}:Game.counts(node.grid);
+    if(c.av<=0||c.go<=0)return 'lose';
+    return 'play';
+  }
+
+  function foldFronts(foldAllow){ return Object.keys(FOLD).filter(k=>!foldAllow||foldAllow[k]!==false); }
+
+  /* --- 手の生成: v1既定は歩く・登る・押す・折りの4系統。swapはopts.includeSwapがtrueかつステージがswapAllowの時のみ --- */
+  function movesFor(node,rules,opts){
+    const moves=[];
+    if(node.mode==='3d'){
+      for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){ moves.push({type:'walk',dx,dz}); moves.push({type:'push',dx,dz}); }
+      if(!opts.foldless){ for(const front of foldFronts(rules.foldAllow)) moves.push({type:'fold',front}); }
+    } else {
+      for(const dx of[1,-1]){ moves.push({type:'walk',dx,dz:0}); moves.push({type:'push',dx,dz:0}); }
+      if(!opts.foldless) moves.push({type:'unfold'});
+      if(opts.includeSwap&&rules.swapAllow){
+        for(const[k,c]of node.grid.cells){ if(c.t!=='avatar')continue; const[h,y]=k.split(',').map(Number);
+          for(const[dh,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){ const nh=h+dh,ny=y+dy;
+            if(node.grid.cells.get(nh+','+ny)) moves.push({type:'swap',h1:h,y1:y,h2:nh,y2:ny}); } }
+      }
+    }
+    return moves;
+  }
+
+  /* --- 手の適用: 実際のUI関数(move3D/toggleDim/clickCell)が踏む順序を厳守（移動→重力整定→アバター落下 等） --- */
+  function applyMove(node,mv){
+    if(node.mode==='3d'){
+      if(mv.type==='fold'){
+        const fold=FOLD[mv.front];
+        const g=Engine.compress(node.world,fold.axis,fold.front);
+        Engine.gravitySettle(g);
+        const gev=Game.gravityDropAvatars(g);
+        return{node:{mode:'2d',grid:g,dims:node.dims,foldFront:mv.front},win:!!gev.win};
+      }
+      const w=Engine.cloneWorld(node.world);
+      const ev=Game3D.move(w,mv.dx,mv.dz,mv.type==='push'?'push':'climb');
+      Engine.gravitySettle3D(w);
+      return{node:{mode:'3d',world:w,dims:node.dims},win:!!ev.win};
+    } else {
+      if(mv.type==='unfold'){
+        const w=Engine.reconstruct(node.grid,node.dims);
+        Engine.gravitySettle3D(w);
+        const gev=Game3D.gravityDropAvatars(w);
+        return{node:{mode:'3d',world:w,dims:node.dims},win:!!gev.win};
+      }
+      if(mv.type==='swap'){
+        const g=Engine.cloneGrid(node.grid);
+        if(!Game.swap(g,mv.h1,mv.y1,mv.h2,mv.y2))return null;
+        Engine.gravitySettle(g);
+        return{node:{mode:'2d',grid:g,dims:node.dims,foldFront:node.foldFront},win:false};
+      }
+      const g=Engine.cloneGrid(node.grid);
+      const ev=Game.move(g,mv.dx,mv.type==='push'?'push':'climb');
+      Engine.gravitySettle(g);
+      return{node:{mode:'2d',grid:g,dims:node.dims,foldFront:node.foldFront},win:!!ev.win};
+    }
+  }
+
+  /* --- 解パスの表記（3.3準拠） --- */
+  function shortLabel(mv){ switch(mv.type){
+    case 'walk': return 'c('+mv.dx+','+mv.dz+')';
+    case 'push': return 'p('+mv.dx+','+mv.dz+')';
+    case 'fold': return 'fold('+mv.front+')';
+    case 'unfold': return 'unfold';
+    case 'swap': return 'swap('+mv.h1+','+mv.y1+'\u2192'+mv.h2+','+mv.y2+')';
+    default: return '?'; } }
+  function longLabel(mv){ switch(mv.type){
+    case 'walk': return '\u6b69\u304f/\u767b\u308b ('+mv.dx+','+mv.dz+')';
+    case 'push': return '\u62bc\u3059 ('+mv.dx+','+mv.dz+')';
+    case 'fold': return '\u6298\u308a\u305f\u305f\u3080\uff08'+mv.front+'\uff09';
+    case 'unfold': return '\u5c55\u958b\uff083D\u3078\uff09';
+    case 'swap': return '\u6570\u5b57\u5165\u308c\u66ff\u3048 ('+mv.h1+','+mv.y1+')\u2194('+mv.h2+','+mv.y2+')';
+    default: return '?'; } }
+  function formatPath(path){ return path.map(shortLabel).join(' '); }
+
+  /* --- 判定系（3章）: BFSで最短手数を保証。可否は win/no-solution/truncatedの三値で返す --- */
+  async function search(startNode,rules,opts){
+    opts=Object.assign({stateCap:200000,timeMs:15000,includeSwap:false,foldless:false,onProgress:null,signal:null},opts);
+    const t0=now();
+    const startKey=keyOf(startNode);
+    const visited=new Set([startKey]);
+    let frontier=[{node:startNode,path:[]}];
+    let sinceYield=0;
+    while(frontier.length){
+      const next=[];
+      for(const cur of frontier){
+        if(opts.signal&&opts.signal.aborted)return{status:'truncated',reason:'cancelled',visited:visited.size};
+        if(now()-t0>opts.timeMs)return{status:'truncated',reason:'time',visited:visited.size,maxDepth:cur.path.length};
+        if(visited.size>opts.stateCap)return{status:'truncated',reason:'states',visited:visited.size};
+        const moves=movesFor(cur.node,rules,opts);
+        for(const mv of moves){
+          const res=applyMove(cur.node,mv); if(!res)continue;
+          if(res.win)return{status:'win',par:cur.path.length+1,path:[...cur.path,mv],visited:visited.size};
+          const k=keyOf(res.node); if(visited.has(k))continue; visited.add(k);
+          if(statusOf(res.node,false)==='lose')continue; // 死に節: 展開しない
+          next.push({node:res.node,path:[...cur.path,mv]});
+        }
+        sinceYield++;
+        if(sinceYield>=150){ sinceYield=0; if(opts.onProgress)opts.onProgress({visited:visited.size,depth:cur.path.length}); await sleep(0); }
+      }
+      frontier=next;
+      if(opts.onProgress)opts.onProgress({visited:visited.size,depth:frontier.length?frontier[0].path.length:0});
+      await sleep(0);
+    }
+    return{status:'no-solution',visited:visited.size};
+  }
+
+  /* --- 詰み検出（4.3・任意オプション）: 到達可能な状態を完全展開し、勝利可能性を逆向きに伝播 --- */
+  async function findDeadlocks(startNode,rules,opts){
+    opts=Object.assign({stateCap:200000,timeMs:20000,includeSwap:false,onProgress:null,signal:null},opts);
+    const t0=now();
+    const startKey=keyOf(startNode);
+    const nodes=new Map(); nodes.set(startKey,{node:startNode,status:'play',winEdge:false,edges:[]});
+    let frontier=[startKey], truncated=false,reason=null;
+    let sinceYield=0;
+    outer: while(frontier.length){
+      const next=[];
+      for(const curKey of frontier){
+        if(opts.signal&&opts.signal.aborted){truncated=true;reason='cancelled';break outer;}
+        if(now()-t0>opts.timeMs){truncated=true;reason='time';break outer;}
+        if(nodes.size>opts.stateCap){truncated=true;reason='states';break outer;}
+        const rec=nodes.get(curKey); if(rec.status!=='play')continue;
+        const moves=movesFor(rec.node,rules,opts);
+        for(const mv of moves){
+          const res=applyMove(rec.node,mv); if(!res)continue;
+          if(res.win){ rec.winEdge=true; continue; }
+          const k=keyOf(res.node); const status=statusOf(res.node,false);
+          rec.edges.push({mv,toKey:k});
+          if(!nodes.has(k)){ nodes.set(k,{node:res.node,status,winEdge:false,edges:[]}); if(status==='play')next.push(k); }
+        }
+        sinceYield++;
+        if(sinceYield>=150){ sinceYield=0; if(opts.onProgress)opts.onProgress({visited:nodes.size}); await sleep(0); }
+      }
+      frontier=next;
+      if(opts.onProgress)opts.onProgress({visited:nodes.size});
+      await sleep(0);
+    }
+    if(truncated)return{status:'truncated',reason,visited:nodes.size};
+    const winnable=new Set(),queue=[];
+    for(const[k,rec]of nodes)if(rec.winEdge){winnable.add(k);queue.push(k);}
+    const rev=new Map();
+    for(const[k,rec]of nodes)for(const e of rec.edges){ if(!rev.has(e.toKey))rev.set(e.toKey,[]); rev.get(e.toKey).push(k); }
+    while(queue.length){ const k=queue.pop(); for(const p of(rev.get(k)||[]))if(!winnable.has(p)){winnable.add(p);queue.push(p);} }
+    let deadlockCount=0; for(const[k,rec]of nodes)if(rec.status==='play'&&!rec.winEdge&&!winnable.has(k))deadlockCount++;
+    const startRec=nodes.get(startKey);
+    const riskyMoves=[],deathMoves=[];
+    for(const e of startRec.edges){ const rec=nodes.get(e.toKey);
+      if(rec.status==='lose')deathMoves.push(e.mv);
+      else if(!rec.winEdge&&!winnable.has(e.toKey))riskyMoves.push(e.mv); }
+    return{status:'ok',visited:nodes.size,deadlockCount,riskyMoves,deathMoves,startWinnable:startRec.winEdge||winnable.has(startKey)};
+  }
+
+  return{keyOf,statusOf,movesFor,applyMove,search,findDeadlocks,formatPath,shortLabel,longLabel};
+})();
+
+/* ===== SCORE (星評価: 純粋関数としてSolver同様トップレベルに置きNodeテスト可能にする) =====
+   ★3 = par以内 / ★2 = par + max(2, ceil(par*0.5)) 以内 / ★1 = クリア。
+   ヒント使用・アンドゥ使用は星に影響させず、実績バッジとして別記録する。 */
+const Score=(function(){
+  function starsFor(moves,par){ if(!(par>0)||!(moves>=0))return 1;
+    if(moves<=par)return 3;
+    if(moves<=par+Math.max(2,Math.ceil(par*0.5)))return 2;
+    return 1; }
+  function starStr(n){ n=Math.max(0,Math.min(3,n|0)); return '\u2605'.repeat(n)+'\u2606'.repeat(3-n); }
+  return{starsFor,starStr};
+})();
+
+/* ===== SOUND (Web Audio 合成・ファイルなし) ===== */
+const Snd=(function(){
+  let ctx=null,master=null,bgmGain=null;let muted=false,vol=0.7;
+  function ensure(){ if(typeof window==='undefined')return false;
+    if(!ctx){ const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return false;
+      ctx=new AC(); master=ctx.createGain(); master.gain.value=0.45*vol; master.connect(ctx.destination);
+      bgmGain=ctx.createGain(); bgmGain.gain.value=muted?0:1; bgmGain.connect(master); }
+    if(ctx.state==='suspended')ctx.resume(); return true; }
+  function tone(o){ if(muted||!ensure())return; const{f=440,dur=0.1,type='sine',vol=1,slide=0,delay=0}=o;
+    const t=ctx.currentTime+delay,osc=ctx.createOscillator(),g=ctx.createGain();
+    osc.type=type;osc.frequency.setValueAtTime(Math.max(30,f),t);
+    if(slide)osc.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+dur);
+    g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(0.5*vol,t+0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    osc.connect(g);g.connect(master);osc.start(t);osc.stop(t+dur+0.03); }
+  function noise(o){ if(muted||!ensure())return; const{dur=0.08,vol=0.3,delay=0,fc=1400,q=0.8}=o;
+    const t=ctx.currentTime+delay,len=Math.max(1,(dur*ctx.sampleRate)|0),buf=ctx.createBuffer(1,len,ctx.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);
+    const src=ctx.createBufferSource();src.buffer=buf;
+    const flt=ctx.createBiquadFilter();flt.type='lowpass';flt.frequency.value=fc;flt.Q.value=q;
+    const g=ctx.createGain();g.gain.setValueAtTime(vol*0.5,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    src.connect(flt);flt.connect(g);g.connect(master);src.start(t); }
+  /* ===== BGM: WebAudio生成のループ2曲（title=浮遊感のあるパッド分散和音 / game=まばらな低音パルス） ===== */
+  let bgmKind=null,bgmTimer=null,bgmStep=0,bgmNextT=0,droneNodes=[];
+  function bnote(f,dur,type,v,when,det){ const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type;o.frequency.setValueAtTime(f,when); if(det)o.detune.setValueAtTime(det,when);
+    g.gain.setValueAtTime(0.0001,when); g.gain.linearRampToValueAtTime(v,when+Math.min(0.25,dur*0.35));
+    g.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+    o.connect(g);g.connect(bgmGain);o.start(when);o.stop(when+dur+0.05); }
+  const BGM={
+    title:{step:0.62,seq:[220,261.63,329.63,392,329.63,261.63,246.94,196],
+      play(i,t){ const f=this.seq[i%this.seq.length];
+        bnote(f,1.7,'sine',0.10,t); bnote(f,1.7,'triangle',0.035,t,6);
+        if(i%8===4)bnote(f*2,1.2,'sine',0.03,t+0.31); },
+      drone(){ const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=110;
+        g.gain.value=0.05;o.connect(g);g.connect(bgmGain);o.start();return[{o,g}]; }},
+    game:{step:1.0,seq:[110,0,164.81,0,146.83,0,164.81,196],
+      play(i,t){ const f=this.seq[i%this.seq.length]; if(f)bnote(f,0.7,'triangle',0.07,t);
+        if(i%8===6)bnote(587.33,1.1,'sine',0.028,t+0.5);
+        if(i%16===13)bnote(659.25,1.1,'sine',0.024,t+0.25); },
+      drone(){ const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=55;
+        g.gain.value=0.04;o.connect(g);g.connect(bgmGain);o.start();return[{o,g}]; }}};
+  function bgmStop(){ if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null;}
+    for(const d of droneNodes){try{d.g.gain.setTargetAtTime(0.0001,ctx.currentTime,0.15);d.o.stop(ctx.currentTime+0.6);}catch(e){}}
+    droneNodes=[]; }
+  function bgm(kind){ if(kind===bgmKind)return; if(ctx)bgmStop(); bgmKind=kind; if(!kind)return;
+    if(!ensure())return; const M=BGM[kind]; if(!M)return;
+    droneNodes=M.drone(); bgmStep=0; bgmNextT=ctx.currentTime+0.15;
+    bgmTimer=setInterval(()=>{ if(!ctx||ctx.state!=='running'){bgmNextT=ctx?ctx.currentTime+0.15:0;return;}
+      if(muted){bgmNextT=ctx.currentTime+0.15;return;}
+      while(bgmNextT<ctx.currentTime+0.6){ M.play(bgmStep,bgmNextT); bgmNextT+=M.step; bgmStep++; } },200); }
+  return{
+    ensure, setMuted:v=>{muted=v; if(bgmGain)bgmGain.gain.value=v?0:1;}, isMuted:()=>muted,
+    bgm,
+    setVolume:v=>{vol=Math.max(0,Math.min(1,v)); if(master)master.gain.value=0.45*vol;},
+    ui:()=>tone({f:660,dur:0.05,type:'triangle',vol:0.4}),
+    step:()=>{noise({dur:0.05,vol:0.16,fc:900});},
+    climb:()=>{noise({dur:0.05,vol:0.16,fc:900});tone({f:520,dur:0.06,type:'triangle',vol:0.25,delay:0.02});},
+    land:()=>{noise({dur:0.1,vol:0.3,fc:500});},
+    push:()=>{tone({f:120,dur:0.12,type:'square',vol:0.3,slide:-40});noise({dur:0.09,vol:0.2,fc:400});},
+    blocked:()=>{tone({f:90,dur:0.09,type:'square',vol:0.28,slide:-30});},
+    swap:()=>{tone({f:740,dur:0.07,type:'triangle',vol:0.35});tone({f:988,dur:0.09,type:'triangle',vol:0.35,delay:0.07});},
+    select:()=>{tone({f:880,dur:0.05,type:'square',vol:0.22});},
+    compress:()=>{tone({f:900,dur:0.42,type:'sawtooth',vol:0.22,slide:-680});noise({dur:0.32,vol:0.14,fc:2200,delay:0.05});},
+    reconstruct:n=>{tone({f:220,dur:0.4,type:'sawtooth',vol:0.2,slide:520});
+      const m=Math.min(n||1,6);for(let i=0;i<m;i++)tone({f:392*Math.pow(2,i/6),dur:0.1,type:'triangle',vol:0.3,delay:0.16+i*0.06});},
+    win:()=>{[523,659,784,1047].forEach((f,i)=>tone({f,dur:0.16,type:'triangle',vol:0.4,delay:i*0.09}));},
+    lose:()=>{[330,262,196].forEach((f,i)=>tone({f,dur:0.2,type:'sawtooth',vol:0.28,delay:i*0.1}));},
+    fallDeath:()=>{tone({f:520,dur:0.34,type:'sawtooth',vol:0.3,slide:-440});},
+  };
+})();
+
+/* ===== FX 差分検出（移動アニメの対応付け・純関数） ===== */
+function diff2D(oldCells,newCells){
+  const olds=[]; for(const[k,c]of oldCells){const[h,y]=k.split(",").map(Number);olds.push({h,y,c,used:false});}
+  const news=[]; for(const[k,c]of newCells){const[h,y]=k.split(",").map(Number);news.push({h,y,c,k,done:false});}
+  const moves=new Map();
+  // pass0: 同一位置で種類・数が一致 → その場据え置き（移動なし）
+  for(const n of news){ for(const o of olds){ if(o.used)continue;
+    if(o.h===n.h&&o.y===n.y&&o.c.t===n.c.t&&o.c.count===n.c.count){o.used=true;n.done=true;break;} } }
+  // pass1: 種類・数一致で最近傍（マンハッタン距離<=3）→ 移動
+  for(const n of news){ if(n.done)continue; let best=-1,bd=1e9;
+    for(let i=0;i<olds.length;i++){const o=olds[i];if(o.used)continue;if(o.c.t!==n.c.t||o.c.count!==n.c.count)continue;
+      const d=Math.abs(o.h-n.h)+Math.abs(o.y-n.y); if(d<bd&&d<=3){bd=d;best=i;} }
+    if(best>=0){olds[best].used=true;n.done=true;moves.set(n.k,[olds[best].h-n.h,olds[best].y-n.y]);} }
+  // pass2: 同一列の落下（距離無制限）→ 長い落下が分裂しないように
+  for(const n of news){ if(n.done)continue; let best=-1,bd=1e9;
+    for(let i=0;i<olds.length;i++){const o=olds[i];if(o.used)continue;if(o.c.t!==n.c.t||o.c.count!==n.c.count)continue;
+      if(o.h===n.h&&o.y>n.y){const d=o.y-n.y; if(d<bd){bd=d;best=i;}} }
+    if(best>=0){olds[best].used=true;n.done=true;moves.set(n.k,[0,olds[best].y-n.y]);} }
+  const vanished=olds.filter(o=>!o.used).map(o=>({h:o.h,y:o.y,t:o.c.t,count:o.c.count}));
+  return{moves,vanished};
+}
+// 落下専用差分: 整定は同一列内でのみ下方向へ移動するため、列ごとに順序保存でマッチする（距離無制限・正確）
+function diffFall2D(oldCells,newCells,W2,H2){
+  const moves=new Map(),vanished=[];
+  for(let h=0;h<W2;h++){
+    const olds=[],news=[];
+    for(let y=0;y<H2;y++){const k=h+","+y; if(oldCells.has(k))olds.push({y,c:oldCells.get(k)}); if(newCells.has(k))news.push({y,c:newCells.get(k)});}
+    let i=0,k2=0;
+    while(i<olds.length&&k2<news.length){
+      const o=olds[i],n=news[k2];
+      if(o.c.t===n.c.t&&o.c.count===n.c.count&&o.y>=n.y){ if(o.y!==n.y)moves.set(h+","+n.y,[0,o.y-n.y]); i++;k2++; }
+      else { vanished.push({h,y:o.y,t:o.c.t,count:o.c.count}); i++; }
+    }
+    while(i<olds.length){const o=olds[i];vanished.push({h,y:o.y,t:o.c.t,count:o.c.count});i++;}
+  }
+  return{moves,vanished};
+}
+function diff3D(oldW,newW){
+  const grp=w=>{const m=new Map();for(const[k,v]of w.vox){const g=v.t+'#'+v.id;if(!m.has(g))m.set(g,[]);m.get(g).push(k);}
+    for(const a of m.values())a.sort();return m;};
+  const om=grp(oldW),nm=grp(newW),moves=new Map(),vanished=[];
+  for(const[g,oks]of om){const nks=nm.get(g);
+    if(!nks){for(const k of oks){const[x,y,z]=k.split(",").map(Number);vanished.push({x,y,z,t:g.split('#')[0]});}continue;}
+    if(nks.length!==oks.length)continue;
+    for(let i=0;i<nks.length;i++){const[ox,oy,oz]=oks[i].split(",").map(Number),[x,y,z]=nks[i].split(",").map(Number);
+      if(ox!==x||oy!==y||oz!==z)moves.set(nks[i],[ox-x,oy-y,oz-z]);}}
+  return{moves,vanished};
+}
+
+/* ===== APP ===== */
+function startApp(){
+  const COL={ground:'#5b6b86',push:'#caa468',goal:'#46c7a8',hazard:'#d2596b',avatar:'#ff8a5c'};
+  const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+  const pv=document.getElementById('pv'),pctx=pv.getContext('2d');
+  const readout=document.getElementById('readout'),badge=document.getElementById('badge'),hintEl=document.getElementById('hint');
+  const statusEl=document.getElementById('status'),phEl=document.getElementById('ph');
+  const LW=600,LH=460,PW=216,PH=216,mono='ui-monospace,Menlo,Consolas,monospace';
+  const FACES=[
+    {n:[1,0,0],c:[[.5,-.5,-.5],[.5,.5,-.5],[.5,.5,.5],[.5,-.5,.5]]},{n:[-1,0,0],c:[[-.5,-.5,.5],[-.5,.5,.5],[-.5,.5,-.5],[-.5,-.5,-.5]]},
+    {n:[0,1,0],c:[[-.5,.5,-.5],[-.5,.5,.5],[.5,.5,.5],[.5,.5,-.5]]},{n:[0,-1,0],c:[[-.5,-.5,.5],[-.5,-.5,-.5],[.5,-.5,-.5],[.5,-.5,.5]]},
+    {n:[0,0,1],c:[[-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]]},{n:[0,0,-1],c:[[.5,-.5,-.5],[-.5,-.5,-.5],[-.5,.5,-.5],[.5,.5,-.5]]},
+  ];
+  const LIGHT=V.norm([0.5,1,0.35]);
+
+  let state, undoStack, cam, B, center;
+  let stageRules={foldAllow:{'+x':true,'-x':true,'+z':true,'-z':true},swapAllow:true}; // 現在のステージの制約（既定=全許可）
+  function rulesFromStage(st){ const fa=st&&st.foldAllow; const out={'+x':true,'-x':true,'+z':true,'-z':true};
+    if(fa)for(const k in out)out[k]=fa[k]!==false; return{foldAllow:out,swapAllow:!st||st.swapAllow!==false}; }
+  function anyFoldAllowed(){ return Object.values(stageRules.foldAllow).some(v=>v!==false); }
+
+  /* --- FX 基盤 --- */
+  const SET=(()=>{try{const s=JSON.parse(localStorage.getItem('dp_settings')||'{}');
+    return{sound:s.sound!==false,vol:(typeof s.vol==='number'?s.vol:0.7),anim:s.anim!==false,shake:s.shake!==false};}
+    catch(e){return{sound:true,vol:0.7,anim:true,shake:true};}})();
+  function saveSet(){try{localStorage.setItem('dp_settings',JSON.stringify(SET));}catch(e){}}
+  const DUR={slide:0,swap:0,compress:0,reconstruct:0,shake:0,fall:0};
+  function applySettings(){ const on=SET.anim;
+    DUR.slide=on?130:0;DUR.swap=on?190:0;DUR.compress=on?640:0;DUR.reconstruct=on?760:0;DUR.shake=(on&&SET.shake)?220:0;DUR.fall=on?420:0;
+    Snd.setMuted(!SET.sound); Snd.setVolume(SET.vol);
+    document.body.classList.toggle('no-anim',!on);
+    syncOptsUI(); }
+  let trans=null, slideFx=null, swapFx=null, shakeFx=null, fallFx=null, particles=[], fxLoop=false;
+  const easeOut=p=>1-Math.pow(1-p,3);
+  const easeIn=p=>p*p*p;
+  const prog=(fx,now)=>fx?Math.max(0,Math.min(1,(now-fx.t0)/Math.max(1,fx.dur))):1;
+  function fxKick(){ if(fxLoop)return; fxLoop=true; requestAnimationFrame(fxTick); }
+  function fxTick(){ const now=performance.now();
+    if(trans&&prog(trans,now)>=1){ trans=null; }
+    if(slideFx&&prog(slideFx,now)>=1) slideFx=null;
+    if(swapFx&&prog(swapFx,now)>=1) swapFx=null;
+    if(shakeFx&&prog(shakeFx,now)>=1) shakeFx=null;
+    if(fallFx&&now>=fallFx.t0+(fallFx.slideDur||0)+fallFx.dur) finishFall();
+    particles=particles.filter(p=>now-p.t0<p.dur);
+    render(now);
+    if(trans||slideFx||swapFx||shakeFx||fallFx||particles.length||(hasDanger&&SET.anim&&state.status==='play')) requestAnimationFrame(fxTick);
+    else { fxLoop=false; render(); } }
+  function clearFx(){ trans=null;slideFx=null;swapFx=null;fallFx=null;shakeFx=null; }
+  function spawnRing(x,y,color,big){ if(!SET.anim)return; particles.push({kind:'ring',x,y,color,t0:performance.now(),dur:big?480:340,r0:big?6:4,r1:big?36:20}); fxKick(); }
+  function spawnBurst(x,y,color){ if(!SET.anim)return; const t0=performance.now();
+    for(let i=0;i<8;i++){const a=Math.PI*2*i/8+Math.random()*0.5;particles.push({kind:'dot',x,y,color,t0,dur:380,vx:Math.cos(a)*46,vy:Math.sin(a)*46-24});} fxKick(); }
+  function spawnDust(x,y){ if(!SET.anim)return; const t0=performance.now();
+    for(let i=0;i<5;i++){const a=Math.PI+Math.random()*Math.PI;particles.push({kind:'dot',x,y,color:'rgba(160,170,190,0.8)',t0,dur:300,vx:Math.cos(a)*28,vy:-Math.abs(Math.sin(a))*20});} fxKick(); }
+  function drawParticles(now){ for(const p of particles){ const q=Math.min(1,(now-p.t0)/p.dur),e=easeOut(q);
+    ctx.save(); ctx.globalAlpha=1-q;
+    if(p.kind==='ring'){ ctx.strokeStyle=p.color;ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(p.x,p.y,p.r0+(p.r1-p.r0)*e,0,7);ctx.stroke(); }
+    else { const t=(now-p.t0)/1000;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x+p.vx*e*0.9,p.y+p.vy*e*0.9+40*t*t,2.2,0,7);ctx.fill(); }
+    ctx.restore(); } }
+  function startShake(amp){ if(DUR.shake<=0)return; shakeFx={t0:performance.now(),dur:DUR.shake,amp:amp||4}; fxKick(); }
+  function startSlide2D(moves){ if(DUR.slide<=0||!moves.size)return; slideFx={mode:'2d',moves,t0:performance.now(),dur:DUR.slide}; fxKick(); }
+  function startSlide3D(moves){ if(DUR.slide<=0||!moves.size)return; slideFx={mode:'3d',moves,t0:performance.now(),dur:DUR.slide}; fxKick(); }
+  // 落下FX: 加速(easeIn)で落ち、完了時に着地ダスト・着地音・（大落下は）小シェイク。ghostsは場外/障害物で消える対象。
+  function scheduleFall(mode,moves,ghosts,delay,avDeathSnd,slideDur){
+    if(DUR.fall<=0){ if(avDeathSnd)Snd.fallDeath();
+      for(const g of (ghosts||[]))if(g.burst)burstAt(mode,g.h!==undefined?g.h:g.x,g.ty,g.z,g.t);
+      return; }
+    if((!moves||!moves.size)&&(!ghosts||!ghosts.length))return;
+    fallFx={mode,moves:moves||new Map(),ghosts:ghosts||[],t0:performance.now()+(delay||0),dur:DUR.fall,avDeathSnd:!!avDeathSnd,slideDur:slideDur||0};
+    fxKick(); }
+  function burstAt(mode,hx,y,z,t){ const col=t==='avatar'?'#e0687e':'#bcd4ee';
+    if(mode==='3d'){ const p=proj([hx,y,z]); spawnBurst(p.x,p.y,col); }
+    else if(state.layout2d){ const{ox,oy,S,gap,W2,H2,rev}=state.layout2d; const c2=rev?(W2-1-hx):hx;
+      spawnBurst(ox+c2*(S+gap)+S/2, oy+(H2-1-y)*(S+gap)+S/2, col); } }
+  function finishFall(){ const f=fallFx; fallFx=null; if(!f)return;
+    let fell=false,big=false;
+    for(const[k,off]of f.moves){ const dy=off[1]||0; if(dy>=1){ fell=true; if(dy>=2)big=true;
+      if(f.mode==='3d'&&state.mode==='3d'){ const[x,y,z]=k.split(",").map(Number); const p=proj([x,y-0.5,z]); spawnDust(p.x,p.y); }
+      else if(f.mode==='2d'&&state.mode==='2d'&&state.layout2d){ const[h,y]=k.split(",").map(Number);
+        const{ox,oy,S,gap,W2,H2,rev}=state.layout2d; const c2=rev?(W2-1-h):h; spawnDust(ox+c2*(S+gap)+S/2, oy+(H2-1-y)*(S+gap)+S); } } }
+    for(const g of f.ghosts){ if(g.burst) burstAt(f.mode, g.h!==undefined?g.h:g.x, g.ty, g.z, g.t); }
+    if(fell)Snd.land(); if(big)startShake(2.5);
+    if(f.avDeathSnd)Snd.fallDeath(); }
+  // 消滅対象からゴーストを作る。最終状態で下に支えがあれば「そこまで落ちてバースト」、なければ「場外まで落ちてフェード」。
+  function makeGhosts2D(g,vanished,moves,sh){ const ghosts=[],bursts=[]; sh=sh||0;
+    for(const v of vanished){ if(moves.has(v.h+","+v.y)&&v.t==='goal')continue;   // ゴール消費(アバターが乗って勝利)のみ除外
+      const gh=(v.h+sh);                                            // 押し出し後の水平位置（落下前）
+      let ys=-1; for(let yy=v.y-1;yy>=0;yy--){ if(Game.cell(g,gh,yy)){ys=yy;break;} }
+      const ty=ys>=0?ys+1:-1.6;
+      if(ty===v.y&&sh===0){ bursts.push(v); continue; }             // 落下距離0かつ押し出しなし → 即バースト（従来どおり）
+      ghosts.push({h:gh,y:v.y,ty,cell:{t:v.t,count:v.count||1},fade:ys<0,burst:ys>=0,t:v.t,slideFrom:sh?[-sh,0]:null}); }
+    return{ghosts,bursts}; }
+  function makeGhosts3D(w,vanished,moves,sdx,sdz){ const ghosts=[],bursts=[]; sdx=sdx||0; sdz=sdz||0;
+    for(const v of vanished){ if(moves.has(v.x+","+v.y+","+v.z)&&v.t==='goal')continue;   // ゴール消費のみ除外
+      const gx=v.x+sdx, gz=v.z+sdz;                                 // 押し出し後の水平位置（落下前）
+      let ys=-1; for(let yy=v.y-1;yy>=0;yy--){ if(Game3D.at(w,gx,yy,gz)){ys=yy;break;} }
+      const ty=ys>=0?ys+1:-1.6;
+      if(ty===v.y&&sdx===0&&sdz===0){ bursts.push(v); continue; }
+      ghosts.push({x:gx,y:v.y,z:gz,ty,fade:ys<0,burst:ys>=0,t:v.t,slideFrom:(sdx||sdz)?[-sdx,-sdz]:null}); }
+    return{ghosts,bursts}; }
+  function drawGhostVox(x,y,z,t,alpha,tint){ if(alpha<=0)return; ctx.save(); ctx.globalAlpha=alpha;
+    for(const fc of FACES){ if(V.dot(fc.n,B.dir)<=1e-6)continue;
+      const pts=fc.c.map(o=>proj([x+o[0],y+o[1],z+o[2]]));
+      ctx.fillStyle=tint?tint:shade(COL[t],0.55+0.45*Math.max(0,V.dot(fc.n,LIGHT)));
+      ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<4;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.closePath();ctx.fill(); }
+    ctx.restore(); }
+  function drawGhostCell(h,yCur,cellData,alpha,tint){ if(alpha<=0||!state.layout2d)return;
+    const{ox,oy,S,gap,W2,H2,rev}=state.layout2d; const col=rev?(W2-1-h):h;
+    const px=ox+col*(S+gap), py=oy+(H2-1-yCur)*(S+gap);
+    ctx.save(); ctx.globalAlpha=alpha;
+    ctx.fillStyle=tint?tint:shade(COL[cellData.t],.92); rrect(px,py,S,S,8); ctx.fill();
+    if(!tint){ ctx.fillStyle=(cellData.t==='push'||cellData.t==='goal')?'#10130c':'#f3f5fb';
+      ctx.font='600 18px '+mono; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(String(cellData.count),px+S/2,py+S/2+6); ctx.textAlign='start'; ctx.textBaseline='alphabetic'; }
+    ctx.restore(); }
+  function drawGhosts(now){ if(!fallFx||!fallFx.ghosts.length)return;
+    const FALLC='#bcd4ee';
+    const sd=fallFx.slideDur||0, t=now-fallFx.t0;
+    const sp=sd>0?Math.max(0,Math.min(1,t/sd)):1, slideP=easeOut(sp);      // 押し出し(横スライド)フェーズ
+    const pF=Math.max(0,Math.min(1,(t-sd)/Math.max(1,fallFx.dur))), e=easeIn(pF); // 落下フェーズ
+    if(fallFx.mode==='3d'&&state.mode==='3d'){
+      for(const g of fallFx.ghosts){ const yCur=g.y-(g.y-g.ty)*e;
+        let gx=g.x,gz=g.z; if(g.slideFrom&&slideP<1){gx=g.x+g.slideFrom[0]*(1-slideP);gz=g.z+g.slideFrom[1]*(1-slideP);}
+        if(g.fade&&sp>=1&&pF>0){ for(let i=1;i<=3;i++)drawGhostVox(gx,yCur+i*0.34,gz,g.t,(1-pF)*0.24*(1-i/4),FALLC); } // 青白い残像トレイル
+        drawGhostVox(gx,yCur,gz,g.t,(g.fade?(1-pF):1)*0.92);
+        if(g.fade&&!g._deb&&yCur<-0.5){ const p=proj([gx,-0.5,gz]); spawnBurst(p.x,p.y,FALLC); g._deb=true; } } } // 奈落ライン到達で破片
+    else if(fallFx.mode==='2d'&&state.mode==='2d'&&state.layout2d){
+      if(trans&&trans.kind==='compress'&&prog(trans,now)<0.55)return;  // 3D収束フェーズ中は2Dゴーストを出さない
+      const{ox,oy,S,gap,W2,H2,rev}=state.layout2d, yb=oy+(H2-1)*(S+gap)+S;
+      for(const g of fallFx.ghosts){ const yCur=g.y-(g.y-g.ty)*e;
+        let gh=g.h; if(g.slideFrom&&slideP<1){gh=g.h+g.slideFrom[0]*(1-slideP);}
+        if(g.fade&&sp>=1&&pF>0){ for(let i=1;i<=3;i++)drawGhostCell(gh,yCur+i*0.34,g.cell,(1-pF)*0.24*(1-i/4),FALLC); }
+        drawGhostCell(gh,yCur,g.cell,(g.fade?(1-pF):1)*0.92);
+        if(g.fade&&!g._deb&&yCur<0){ const col2=rev?(W2-1-gh):gh; spawnBurst(ox+col2*(S+gap)+S/2,yb,FALLC); g._deb=true; } } } }
+
+  let STAGES=null, stageOrder=[], currentStageId=null;
+  let preEditStageId=null; // エディタへ入る直前に選んでいたステージ（テストプレイ経由でも戻れるように保持）
+  function buildDemo(){const w=Engine.makeWorld(4,3,4);
+    for(let x=0;x<4;x++)for(let z=0;z<4;z++)Engine.setVox(w,x,0,z,'ground',false);
+    Engine.setVox(w,0,1,3,'avatar',true);Engine.setVox(w,0,1,2,'ground',false);
+    Engine.setVox(w,2,1,3,'push',false);Engine.setVox(w,2,1,2,'push',false);Engine.setVox(w,3,1,3,'goal',false);Engine.assignIds(w);Engine.gravitySettle3D(w);return w;}
+  function worldFromStage(st){const d=st.dims,w=Engine.makeWorld(d.W,d.H,d.D,st.walls===false);
+    for(const v of st.voxels){const[x,y,z,t,g,grp]=v;Engine.setVox(w,x,y,z,t,!!g,0,(t==='push'&&grp!=null)?grp:null);}
+    Engine.assignIds(w);Engine.gravitySettle3D(w);return w;}
+  function freshState(world,dims){ state={mode:'3d',world,dims,grid2D:null,foldFront:'+z',sel:null,status:'play',reason:'',moves:0,hintsUsed:0,undoUsed:false,hintFx:null};
+    cam={yaw:0.7,pitch:0.5,zoom:60,locked:null}; center=[(dims.W-1)/2,(dims.H-1)/2,(dims.D-1)/2]; undoStack=[]; clearFx();
+    hideToast(); const tgl=document.getElementById('toggle'); if(tgl)tgl.classList.remove('hintGlow'); render(); }
+  let curHint=null;
+  function setTutHint(txt){ curHint=txt||null; const el=document.getElementById('tutHint');
+    document.getElementById('tutHintText').textContent=curHint||'';
+    el.style.display=curHint?'flex':'none'; }
+  function toggleTutHint(){ if(!curHint)return; const el=document.getElementById('tutHint');
+    el.style.display=(el.style.display==='none')?'flex':'none'; }
+  function startStage(id){ const st=STAGES&&STAGES[id]; if(!st)return; currentStageId=id; stageRules=rulesFromStage(st); setTutHint(st.hint||null); freshState(worldFromStage(st),{...st.dims}); }
+  function startDemo(){ currentStageId=null; stageRules=rulesFromStage(null); setTutHint(null); freshState(buildDemo(),{W:4,H:3,D:4}); }
+  function reset(){ if(testing&&ed){ freshState(Engine.cloneWorld(ed.world),{...ed.dims}); return; }
+    if(currentStageId&&STAGES&&STAGES[currentStageId]) startStage(currentStageId); else startDemo(); }
+  async function loadStages(){
+    const dev=new URLSearchParams(location.search).has('dev');
+    if(!dev&&window.STAGES&&Object.keys(window.STAGES).length) return window.STAGES;
+    try{ const mani=await (await fetch('stages/manifest.json')).json(); const out={};
+      for(const f of mani){ const st=await (await fetch('stages/'+f)).json(); out[st.id]=st; }
+      try{ const tiers=await (await fetch('stages/tiers.json')).json(); if(tiers&&typeof tiers==='object')window.TIERS=tiers; }catch(e2){}
+      return out;
+    }catch(e){ return (window.STAGES&&Object.keys(window.STAGES).length)?window.STAGES:null; } }
+  async function init(){ STAGES=await loadStages();
+    if(STAGES&&Object.keys(STAGES).length){ stageOrder=Object.values(STAGES).sort((a,b)=>(a.order||0)-(b.order||0)).map(s=>s.id); startStage(stageOrder[0]); }
+    else { startDemo(); }
+    updateDevUI(); showScreen('title'); }
+
+  /* ===== 画面管理（タイトル / ステージ選択 / ゲーム）・進行・開発者モード ===== */
+  let screen='title';
+  const PROG=(()=>{try{const p=JSON.parse(localStorage.getItem('dp_progress'))||{};p.cleared=p.cleared||{};p.results=p.results||{};return p;}catch(e){return{cleared:{},results:{}};}})();
+  const STATS=(()=>{const d={moves:0,pushes:0,folds:0,unfolds:0,swaps:0,undos:0,hints:0,wins:0,vanBlocks:0,vanAvatars:0};
+    try{return Object.assign(d,JSON.parse(localStorage.getItem('dp_stats'))||{});}catch(e){return d;}})();
+  function saveStats(){try{localStorage.setItem('dp_stats',JSON.stringify(STATS));}catch(e){}}
+  function statVanished(list){ if(!list)return; let n=0;
+    for(const v of list){ if(v.t==='avatar')STATS.vanAvatars++; else STATS.vanBlocks++; n++; }
+    if(n)saveStats(); }
+  if(!PROG.cleared)PROG.cleared={};
+  function saveProg(){try{localStorage.setItem('dp_progress',JSON.stringify(PROG));}catch(e){}}
+  function isCleared(id){return !!PROG.cleared[id];}
+  function isUnlocked(id){const i=stageOrder.indexOf(id);return i<=0||isCleared(stageOrder[i-1]);}
+  function markCleared(id,res){ let dirty=false;
+    if(!PROG.cleared[id]){PROG.cleared[id]=true;dirty=true;}
+    if(res){ const r=PROG.results[id]||(PROG.results[id]={stars:0,bestMoves:null,noUndo:false,noHint:false});
+      if(res.stars>r.stars){r.stars=res.stars;dirty=true;}
+      if(r.bestMoves==null||res.moves<r.bestMoves){r.bestMoves=res.moves;dirty=true;}
+      if(res.noUndo&&!r.noUndo){r.noUndo=true;dirty=true;}
+      if(res.noHint&&!r.noHint){r.noHint=true;dirty=true;} }
+    if(dirty)saveProg(); }
+  function devMode(){try{return localStorage.getItem('dp_dev')==='1';}catch(e){return false;}}
+  function updateDevUI(){ const on=devMode();
+    for(const[el,disp]of[['mEdit',''],['editBtn',''],['devBadge','']]){const n=document.getElementById(el);if(n)n.style.display=on?disp:'none';} }
+  window.dp={dev:v=>{try{localStorage.setItem('dp_dev',v?'1':'0');}catch(e){} updateDevUI();
+    console.log('開発者モード: '+(v?'ON（メニューにエディターモードを表示）':'OFF')); return !!v;}};
+  function showScreen(name){ screen=name;
+    document.getElementById('titleScreen').style.display=name==='title'?'flex':'none';
+    document.getElementById('selectScreen').style.display=name==='select'?'flex':'none';
+    document.getElementById('optIconBtn').style.display=name==='game'?'flex':'none';
+    if(name==='title'||name==='select')Snd.bgm('title'); else if(name==='game')Snd.bgm('game');
+    if(name==='title')titleBgKick(); }
+  const collapsedTiers=new Set(); // セッション中の折りたたみ状態（章番号）
+  let tiersInited=false;
+  function nextStageId(){ for(const id of stageOrder){ if(isUnlocked(id)&&!isCleared(id))return id; } return null; }
+  function buildStageList(){ const box=document.getElementById('stageList'); box.innerHTML='';
+    const byTier=new Map();
+    for(const id of stageOrder){ const st=STAGES[id]; if(!byTier.has(st.tier))byTier.set(st.tier,[]); byTier.get(st.tier).push(id); }
+    if(!tiersInited){ tiersInited=true;
+      const nid=nextStageId(); const openTier=nid?STAGES[nid].tier:(stageOrder.length?STAGES[stageOrder[stageOrder.length-1]].tier:null);
+      for(const tier of byTier.keys()) if(tier!==openTier) collapsedTiers.add(tier); }
+    for(const[tier,ids]of byTier){
+      const tn=(typeof window!=='undefined'&&window.TIERS&&window.TIERS[tier])?window.TIERS[tier]:null;
+      const clearedN=ids.filter(isCleared).length;
+      const collapsed=collapsedTiers.has(tier);
+      const head=document.createElement('button'); head.className='sTierHead'+(collapsed?' collapsed':'');
+      head.innerHTML='<span class="sTierName">'+(tn?('第'+tier+'章 '+tn):('TIER '+tier))+'</span>'
+        +'<span class="sTierProg'+(clearedN===ids.length?' allClear':'')+'">'+clearedN+' / '+ids.length+'<span class="sTierArrow"> ▾</span></span>';
+      const body=document.createElement('div'); body.className='sTierBody'+(collapsed?' collapsed':'');
+      for(const id of ids){ const st=STAGES[id]; const un=isUnlocked(id),cl=isCleared(id);
+        const b=document.createElement('button'); b.className='sItem'+(un?'':' locked');
+        const res=PROG.results[id];
+        b.innerHTML='<span class="sMark">'+(cl?'✓':(un?'▶':'🔒'))+'</span><span>'+(st.name||id)+'</span>'
+          +(cl?'<span class="sStars">'+Score.starStr((res&&res.stars)?res.stars:1)+'</span>':'');
+        b.onclick=un?()=>{Snd.select();showScreen('game');startStage(id);}:()=>Snd.blocked();
+        body.appendChild(b); }
+      head.onclick=()=>{ Snd.ui(); if(collapsedTiers.has(tier))collapsedTiers.delete(tier); else collapsedTiers.add(tier);
+        head.classList.toggle('collapsed'); body.classList.toggle('collapsed'); };
+      box.appendChild(head); box.appendChild(body); } }
+  /* タイトル背景: 消失点へ収束する透視線（アニメ設定オフ時は静止画） */
+  let tbgRun=false;
+  function titleBgKick(){ const cvT=document.getElementById('titleCv'); if(!cvT)return;
+    const c2=cvT.getContext('2d');
+    function draw(t){ const W=cvT.width=cvT.clientWidth||innerWidth,H=cvT.height=cvT.clientHeight||innerHeight;
+      c2.clearRect(0,0,W,H);
+      const vx=W*0.5,vy=H*0.40,N=26,ph=SET.anim?(t*0.00022)%(Math.PI*2/N):0;
+      c2.lineWidth=1;c2.strokeStyle='rgba(90,110,150,.14)';
+      for(let i=0;i<N;i++){const a=ph+i*(Math.PI*2/N);
+        c2.beginPath();c2.moveTo(vx,vy);c2.lineTo(vx+Math.cos(a)*Math.max(W,H)*1.2,vy+Math.sin(a)*Math.max(W,H)*1.2);c2.stroke();}
+      for(let r=0;r<5;r++){const rr=40+r*90+(SET.anim?(t*0.012)%90:0);
+        c2.strokeStyle='rgba(90,110,150,'+Math.max(0,0.16*(1-rr/500)).toFixed(3)+')';
+        c2.beginPath();c2.arc(vx,vy,rr,0,7);c2.stroke();}
+      const g=c2.createRadialGradient(vx,vy,0,vx,vy,90);
+      g.addColorStop(0,'rgba(150,175,230,.30)');g.addColorStop(1,'rgba(150,175,230,0)');
+      c2.fillStyle=g;c2.beginPath();c2.arc(vx,vy,90,0,7);c2.fill(); }
+    if(!SET.anim){draw(0);return;}
+    if(tbgRun)return; tbgRun=true;
+    requestAnimationFrame(function loop(ts){ if(screen!=='title'){tbgRun=false;return;} draw(ts); requestAnimationFrame(loop); }); }
+  document.getElementById('mStage').onclick=()=>{Snd.select();buildStageList();showScreen('select');};
+  document.getElementById('sBack').onclick=()=>{Snd.ui();showScreen('title');};
+  function openOptions(){ Snd.ui(); document.getElementById('optOverlay').style.display='flex'; }
+  function closeOptions(){ document.getElementById('optOverlay').style.display='none'; }
+  document.getElementById('mOpt').onclick=openOptions;
+
+  /* ===== 次の一手ヒント: 現在の盤面からソルバーで最短解を求め、最初の1手だけ提示 ===== */
+  let hintBusy=false,toastTimer=null;
+  function showToast(msg,ms){ const t=e('moveToast'); t.textContent=msg; t.style.display='block';
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>{t.style.display='none';},ms||9000); }
+  function hideToast(){ const t=e('moveToast'); if(t)t.style.display='none'; clearTimeout(toastTimer); }
+  /* ワールド方向(dx,dz)を、現在のカメラでのキー(W/A/S/D)へ逆算する（カメラ相対移動の逆写像） */
+  function keyForWorldDir(dx,dz){ const {fwd,right}=moveAxes();
+    if(fwd[0]===dx&&fwd[2]===dz)return 'W'; if(fwd[0]===-dx&&fwd[2]===-dz)return 'S';
+    if(right[0]===dx&&right[2]===dz)return 'D'; if(right[0]===-dx&&right[2]===-dz)return 'A';
+    return null; }
+  function clearHint(){ if(state&&state.hintFx){ state.hintFx=null; } }
+  /* 次の一手ヒント: ソルバーで最短解を求め、最初の1手を盤面上に視覚化する。盤面が変化するまで表示し続ける。 */
+  async function nextMoveHint(){ if(hintBusy||!state||state.status!=='play')return;
+    hintBusy=true; const b=e('nextMoveBtn'); b.disabled=true; const old=b.textContent; b.textContent='考え中…';
+    try{
+      const node=state.mode==='3d'
+        ?{mode:'3d',world:Engine.cloneWorld(state.world),dims:{...state.dims}}
+        :{mode:'2d',grid:Engine.cloneGrid(state.grid2D),dims:{...state.dims},foldFront:state.foldFront};
+      const r=await Solver.search(node,stageRules,{stateCap:150000,timeMs:12000,includeSwap:true});
+      if(state&&state.status==='play'){
+        if(r.status==='win'){ state.hintsUsed=(state.hintsUsed||0)+1; STATS.hints++; saveStats();
+          hideToast(); state.hintFx={move:r.path[0],mode:state.mode,t0:performance.now()}; render(); Snd.ui(); }
+        else if(r.status==='no-solution'){ clearHint(); showToast('この盤面からは、もう解けません。「ひとつ戻す」か「最初に戻す」で立て直しましょう。',9000); }
+        else { clearHint(); showToast('複雑すぎて計算できませんでした（未確定）。',7000); } }
+    }finally{ b.textContent=old; b.disabled=false; hintBusy=false; } }
+  document.getElementById('nextMoveBtn').onclick=nextMoveHint;
+
+  /* ===== 記録（統計）画面 ===== */
+  function openStats(){ Snd.ui();
+    const totStars=Object.values(PROG.results).reduce((a,r)=>a+(r.stars||0),0);
+    const clearedN=stageOrder.filter(isCleared).length, totalN=stageOrder.length;
+    const noU=Object.values(PROG.results).filter(r=>r.noUndo).length;
+    const noH=Object.values(PROG.results).filter(r=>r.noHint).length;
+    e('statsBody').innerHTML=
+      '<div class="srow"><span>クリア</span><b>'+clearedN+' / '+totalN+' ステージ</b></div>'
+      +'<div class="srow"><span>星の合計</span><b>'+totStars+' / '+(totalN*3)+'</b></div>'
+      +'<div class="srow"><span>アンドゥなしクリア</span><b>'+noU+' ステージ</b></div>'
+      +'<div class="srow"><span>ヒントなしクリア</span><b>'+noH+' ステージ</b></div>'
+      +'<div class="srow"><span>総手数</span><b>'+STATS.moves+'</b></div>'
+      +'<div class="srow"><span>畳んだ回数</span><b>'+STATS.folds+'</b></div>'
+      +'<div class="srow"><span>展開した回数</span><b>'+STATS.unfolds+'</b></div>'
+      +'<div class="srow"><span>押した回数</span><b>'+STATS.pushes+'</b></div>'
+      +'<div class="srow"><span>数字を入れ替えた回数</span><b>'+STATS.swaps+'</b></div>'
+      +'<div class="srow"><span>ひとつ戻した回数</span><b>'+STATS.undos+'</b></div>'
+      +'<div class="srow"><span>次の一手を尋ねた回数</span><b>'+STATS.hints+'</b></div>'
+      +'<div class="srow vp"><span>消失点に消えたもの</span><b>ブロック '+STATS.vanBlocks+' ・ 体 '+STATS.vanAvatars+'</b></div>';
+    e('statsOverlay').style.display='flex'; }
+  document.getElementById('mStats').onclick=openStats;
+  document.getElementById('statsClose').onclick=()=>{Snd.ui();document.getElementById('statsOverlay').style.display='none';};
+  document.getElementById('titleBtn').onclick=()=>{Snd.ui();closeOptions();buildStageList();showScreen('select');};
+  document.getElementById('mEdit').onclick=()=>{Snd.select();showScreen('game');Snd.bgm(null);preEditStageId=currentStageId;enterEditor(false);};
+  function snapshot(){ undoStack.push({mode:state.mode,world:state.world?Engine.cloneWorld(state.world):null,
+    grid2D:state.grid2D?Engine.cloneGrid(state.grid2D):null,dims:state.dims,foldFront:state.foldFront,sel:null,status:state.status,reason:state.reason,
+    moves:state.moves||0,hintsUsed:state.hintsUsed||0,undoUsed:!!state.undoUsed});
+    if(undoStack.length>300)undoStack.shift(); }
+  function undo(){ if(!undoStack.length)return; const keepHints=state.hintsUsed||0;
+    state=undoStack.pop();
+    state.hintsUsed=Math.max(state.hintsUsed||0,keepHints); // ヒント使用はアンドゥで無かったことにしない
+    state.undoUsed=true; STATS.undos++; saveStats();
+    clearFx(); render(); }
+  function selFront(){ if(cam.locked&&stageRules.foldAllow[cam.locked]!==false)return cam.locked;
+    return nearestFront(cam.yaw,stageRules.foldAllow); }
+
+  function proj(p){const rel=V.sub(p,center);return{x:LW/2+V.dot(rel,B.r)*cam.zoom,y:LH/2-V.dot(rel,B.u)*cam.zoom,d:V.dot(rel,B.f)};}
+  function shade(hex,b){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,bl=n&255;return'rgb('+Math.min(255,r*b|0)+','+Math.min(255,g*b|0)+','+Math.min(255,bl*b|0)+')';}
+
+  // 重力マーカー（全ビュー共通）: 重力ありのときだけ下向き矢印(塗り)を表示。(x,y)は中央マーカーと重ならない隅。
+  function gMark(g2,x,y,grav,r){ if(!grav)return; r=r||3.2; g2.save();
+    g2.fillStyle='#12151d'; g2.beginPath();g2.moveTo(x-r,y-r*0.8);g2.lineTo(x+r,y-r*0.8);g2.lineTo(x,y+r);g2.closePath();g2.fill();
+    g2.restore(); }
+  // 盤の外＝奈落を常時提示。3D: 床外周から下へ暗くフェードする霧の垂れ幕＋縁ライン。静的表現（アニメ設定に依存しない）。
+  // 盤の穴（Y=0に支えが無い列＝アバターや重力ブロックが落下し消滅しうる場所）を囲む縁と、そこから下へ暗くなる霧。
+  // 縁は常に表示。霧は「地面側（内側）から見たときだけ」表示し、穴の反対側（外側）からは見えないよう方向でカリングする。
+  function drawAbyss3D(w){ const yF=-0.5, DEPTH=2.6;
+    const isHole=(x,z)=>!Engine.getVox(w,x,0,z);
+    const NB=[{dx:1,dz:0,c0:[0.5,0,-0.5],c1:[0.5,0,0.5]},{dx:-1,dz:0,c0:[-0.5,0,-0.5],c1:[-0.5,0,0.5]},
+              {dx:0,dz:1,c0:[-0.5,0,0.5],c1:[0.5,0,0.5]},{dx:0,dz:-1,c0:[-0.5,0,-0.5],c1:[0.5,0,-0.5]}];
+    const drawEdge=(x,z,nb,normal)=>{ const c0=[x+nb.c0[0],yF,z+nb.c0[2]], c1=[x+nb.c1[0],yF,z+nb.c1[2]];
+      const p0=proj(c0),p1=proj(c1);
+      ctx.strokeStyle='rgba(150,166,196,.5)';ctx.lineWidth=1.6;
+      ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.stroke();
+      if(V.dot(normal,B.dir)>1e-6)return;                          // 反対側から見た時だけ霧を描く
+      const b0=proj([c0[0],c0[1]-DEPTH,c0[2]]),b1=proj([c1[0],c1[1]-DEPTH,c1[2]]);
+      const mx=(p0.x+p1.x)/2,my=(p0.y+p1.y)/2,lx=(b0.x+b1.x)/2,ly=(b0.y+b1.y)/2;
+      const gr=ctx.createLinearGradient(mx,my,lx,ly); gr.addColorStop(0,'rgba(150,170,210,0.4)'); gr.addColorStop(1,'rgba(150,170,210,0)');
+      ctx.fillStyle=gr; ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.lineTo(b1.x,b1.y);ctx.lineTo(b0.x,b0.y);ctx.closePath();ctx.fill(); };
+    for(let x=0;x<w.W;x++)for(let z=0;z<w.D;z++){
+      if(!isHole(x,z))continue;
+      for(const nb of NB){ const nx=x+nb.dx,nz=z+nb.dz;
+        const oob=nx<0||nx>=w.W||nz<0||nz>=w.D;
+        if(!oob&&isHole(nx,nz))continue;                          // 穴同士の内部境界は縁を引かない
+        drawEdge(x,z,nb,[nb.dx,0,nb.dz]); } }                     // 穴→地面側を向く法線
+    if(w.open){ // 壁なし: 盤の外周（地面などソリッドなセル）にも、外側は奈落として縁＋霧を出す
+      for(let x=0;x<w.W;x++)for(let z=0;z<w.D;z++){
+        if(isHole(x,z))continue;                                   // 穴セルは上のループで既に処理済み
+        for(const nb of NB){ const nx=x+nb.dx,nz=z+nb.dz;
+          const oob=nx<0||nx>=w.W||nz<0||nz>=w.D;
+          if(!oob)continue;                                        // 外周（盤の外）に接する辺のみ対象
+          drawEdge(x,z,nb,[-nb.dx,0,-nb.dz]); } }                  // 自分(地面)側を向く法線
+    } }
+  // 2D: Y=0が空いている列（穴）の連続区間の下だけに縁＋霧（3Dと同じ「穴の場所だけ」方針で統一）。
+  function drawAbyss2D(g,ox,oy,S,gap,rev){ const W2=g.W2,H2=g.H2;
+    const isHole=h=>!Game.cell(g,h,0);
+    const yb=oy+(H2-1)*(S+gap)+S, DEPTH=Math.min(64,S*1.4);
+    const colX=h=>ox+(rev?(W2-1-h):h)*(S+gap);
+    let h=0;
+    while(h<W2){ if(!isHole(h)){h++;continue;} let s=h; while(h<W2&&isHole(h))h++; const eIdx=h-1;
+      const lo=Math.min(colX(s),colX(eIdx)), hi=Math.max(colX(s),colX(eIdx))+S; const x0=lo-2,x1=hi+2;
+      const gr=ctx.createLinearGradient(0,yb,0,yb+DEPTH); gr.addColorStop(0,'rgba(150,170,210,0.4)'); gr.addColorStop(1,'rgba(150,170,210,0)');
+      ctx.fillStyle=gr; ctx.fillRect(x0,yb,x1-x0,DEPTH);
+      ctx.strokeStyle='rgba(150,166,196,.5)';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(x0,yb+0.5);ctx.lineTo(x1,yb+0.5);ctx.stroke(); } }
+  function draw3D(wArg,fxFn,noGizmo){const w=wArg||state.world;
+    drawAbyss3D(w);
+    ctx.strokeStyle='rgba(110,124,150,.16)';ctx.lineWidth=1;
+    for(let x=-0.5;x<=w.W-0.5;x++){const a=proj([x,-0.5,-0.5]),b=proj([x,-0.5,w.D-0.5]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+    for(let z=-0.5;z<=w.D-0.5;z++){const a=proj([-0.5,-0.5,z]),b=proj([w.W-0.5,-0.5,z]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+    drawFoldSlab(w);
+    const list=[];for(const[k,v]of w.vox){const[x,y,z]=k.split(",").map(Number);list.push({x,y,z,t:v.t,id:v.id,g:v.g,d:V.dot(V.sub([x,y,z],center),B.f)});}
+    list.sort((a,b)=>b.d-a.d);
+    let dMin=1e9,dMax=-1e9;for(const p of list){if(p.d<dMin)dMin=p.d;if(p.d>dMax)dMax=p.d;}
+    const dSpan=Math.max(0.001,dMax-dMin);
+    const at=(x,y,z)=>w.vox.get(x+","+y+","+z)||null;
+    const normAxis=fc=>fc.n[0]!==0?0:(fc.n[1]!==0?1:2);
+    for(const vx of list){
+      const fx=fxFn?fxFn(vx):null;
+      const s=fx&&fx.s!=null?fx.s:1; if(s<=0.02)continue;
+      const ox=fx?(fx.ox||0):0, oy=fx?(fx.oy||0):0, oz=fx?(fx.oz||0):0;
+      const glow=fx?(fx.glow||0):0, alpha=fx&&fx.alpha!=null?fx.alpha:1;
+      const depthCue=1-0.12*((vx.d-dMin)/dSpan);              // 奥をわずかに暗く
+      if(alpha<1){ctx.save();ctx.globalAlpha=alpha;}
+      const faces=[];
+      for(const fc of FACES){ if(V.dot(fc.n,B.dir)<=1e-6)continue;
+        if(s>=0.999&&at(vx.x+fc.n[0],vx.y+fc.n[1],vx.z+fc.n[2]))continue;   // 露出面のみ（縮小中は全面）
+        const pts=fc.c.map(o=>proj([vx.x+ox+o[0]*s,vx.y+oy+o[1]*s,vx.z+oz+o[2]*s]));
+        ctx.fillStyle=shade(COL[vx.t],(0.55+0.45*Math.max(0,V.dot(fc.n,LIGHT)))*depthCue*(1+glow*0.7));
+        ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<4;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.closePath();ctx.fill();
+        faces.push({fc,pts}); }
+      ctx.strokeStyle='rgba(0,0,0,.42)';ctx.lineWidth=1;
+      for(const{fc,pts}of faces){const na=normAxis(fc);
+        for(let i=0;i<4;i++){const p0=fc.c[i],p1=fc.c[(i+1)%4],m=[(p0[0]+p1[0])/2,(p0[1]+p1[1])/2,(p0[2]+p1[2])/2];
+          const d=[0,0,0];for(let ax=0;ax<3;ax++){if(ax!==na&&Math.abs(m[ax])>0.4)d[ax]=Math.sign(m[ax]);}
+          const nb=(s>=0.999)?at(vx.x+d[0],vx.y+d[1],vx.z+d[2]):null;
+          const internal=nb&&nb.id===vx.id&&vx.t!=='avatar'&&!at(vx.x+d[0]+fc.n[0],vx.y+d[1]+fc.n[1],vx.z+d[2]+fc.n[2]);
+          if(!internal){const a=pts[i],b=pts[(i+1)%4];ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}}}
+      const cp=proj([vx.x+ox,vx.y+oy,vx.z+oz]);
+      if(vx.t==='avatar'){ctx.fillStyle='#231007';ctx.beginPath();ctx.arc(cp.x,cp.y-4*s,4*s,0,7);ctx.fill();}
+      else if(vx.t==='goal'){ctx.strokeStyle='#0c2a25';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cp.x,cp.y-4*s,5*s,0,7);ctx.stroke();}
+      else if(vx.t==='hazard'){ctx.strokeStyle='#3a1118';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cp.x-4,cp.y-8);ctx.lineTo(cp.x+4,cp.y);ctx.moveTo(cp.x+4,cp.y-8);ctx.lineTo(cp.x-4,cp.y);ctx.stroke();}
+      if(s>=0.98&&alpha>=0.98)gMark(ctx,cp.x-8,cp.y-9,vx.g,3.1);
+      if(alpha<1)ctx.restore();
+    }
+    if(!noGizmo)drawGizmo(w);
+  }
+  function drawFoldSlab(w){ if(state.mode!=='3d'||!anyFoldAllowed())return; const fr=selFront();
+    let quad; const yl=-0.5,yh=w.H-0.5;
+    if(fr==='+z'){const z=w.D-0.5;quad=[[-0.5,yl,z],[w.W-0.5,yl,z],[w.W-0.5,yh,z],[-0.5,yh,z]];}
+    else if(fr==='-z'){const z=-0.5;quad=[[-0.5,yl,z],[w.W-0.5,yl,z],[w.W-0.5,yh,z],[-0.5,yh,z]];}
+    else if(fr==='+x'){const x=w.W-0.5;quad=[[x,yl,-0.5],[x,yl,w.D-0.5],[x,yh,w.D-0.5],[x,yh,-0.5]];}
+    else {const x=-0.5;quad=[[x,yl,-0.5],[x,yl,w.D-0.5],[x,yh,w.D-0.5],[x,yh,-0.5]];}
+    const pts=quad.map(p=>proj(p));
+    ctx.save();ctx.fillStyle='rgba(122,162,255,.055)';ctx.strokeStyle='rgba(122,162,255,.28)';ctx.lineWidth=1;ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<4;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  }
+  function drawGizmo(w){const sel=selFront();const cx=(w.W-1)/2,cz=(w.D-1)/2,out=1.6,ins=0.6;
+    const arrows={'+x':[[w.W-0.5+ins,-0.5,cz],[w.W-0.5+out,-0.5,cz]],'-x':[[-0.5-ins,-0.5,cz],[-0.5-out,-0.5,cz]],
+      '+z':[[cx,-0.5,w.D-0.5+ins],[cx,-0.5,w.D-0.5+out]],'-z':[[cx,-0.5,-0.5-ins],[cx,-0.5,-0.5-out]]};
+    state.gizmoScreen={};
+    for(const k in arrows){ if(stageRules.foldAllow[k]===false)continue;
+      const A=proj(arrows[k][0]),Bp=proj(arrows[k][1]);
+      const on=(k===sel), isLocked=on&&(cam.locked===k);
+      const col=isLocked?'#bcd2ff':(on?'#7aa2ff':'rgba(139,150,171,.55)'), lw=isLocked?4:(on?3:1.6), hs=isLocked?13:10;
+      const ang=Math.atan2(Bp.y-A.y,Bp.x-A.x);
+      ctx.save(); if(isLocked){ctx.shadowColor='rgba(122,162,255,.95)';ctx.shadowBlur=13;}
+      ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(Bp.x,Bp.y);ctx.stroke();
+      ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(Bp.x,Bp.y);ctx.lineTo(Bp.x-hs*Math.cos(ang-0.4),Bp.y-hs*Math.sin(ang-0.4));ctx.lineTo(Bp.x-hs*Math.cos(ang+0.4),Bp.y-hs*Math.sin(ang+0.4));ctx.closePath();ctx.fill();
+      if(isLocked){ctx.beginPath();ctx.arc(A.x,A.y,3.5,0,7);ctx.fill();}
+      ctx.restore();
+      ctx.font=(on?'bold ':'')+'11px '+mono;ctx.fillStyle=col;
+      ctx.fillText(isLocked?(k+' 手前 ●固定'):(on?(k+' 手前'):k),Bp.x+6,Bp.y+4);
+      state.gizmoScreen[k]={x:(A.x+Bp.x)/2,y:(A.y+Bp.y)/2};}
+  }
+  function gridLayout(g){const S=46,gap=6,totW=g.W2*(S+gap)-gap,totH=g.H2*(S+gap)-gap;return{S,gap,ox:LW/2-totW/2,oy:LH/2-totH/2};}
+  function draw2D(now,popP){const g=state.grid2D,{S,gap,ox,oy}=gridLayout(g),rev=FOLD[state.foldFront].rev;
+    state.layout2d={ox,oy,S,gap,W2:g.W2,H2:g.H2,rev};
+    now=now||performance.now();
+    const slideP=(slideFx&&slideFx.mode==='2d')?easeOut(prog(slideFx,now)):1;
+    const fallP=(fallFx&&fallFx.mode==='2d')?easeIn(prog(fallFx,now)):1;
+    const swapP=swapFx?easeOut(prog(swapFx,now)):1;
+    const cellPos=(h,y)=>{const col=rev?(g.W2-1-h):h;return[ox+col*(S+gap),oy+(g.H2-1-y)*(S+gap)];};
+    const targets=new Set();
+    if(state.sel){const s=state.sel;for(const[dh,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const k=(s.h+dh)+","+(s.y+dy);if(g.cells.get(k))targets.add(k);}}
+    drawAbyss2D(g,ox,oy,S,gap,rev);
+    ctx.save();
+    if(popP!=null&&popP<1){ const cx=ox+(g.W2*(S+gap)-gap)/2, cy=oy+(g.H2*(S+gap)-gap)/2, sc=0.86+0.14*easeOut(popP);
+      ctx.globalAlpha=0.25+0.75*popP; ctx.translate(cx,cy);ctx.scale(sc,sc);ctx.translate(-cx,-cy); }
+    for(let y=0;y<g.H2;y++)for(let h=0;h<g.W2;h++){const k=h+","+y;let[px,py]=cellPos(h,y);const c=g.cells.get(k);
+      const seld=state.sel&&state.sel.h===h&&state.sel.y===y, tgt=targets.has(k);
+      if(!c){ctx.strokeStyle='rgba(110,124,150,.16)';ctx.lineWidth=1;rrect(px,py,S,S,8);ctx.stroke();continue;}
+      if(slideP<1&&slideFx.moves.has(k)){const[dh,dy]=slideFx.moves.get(k);
+        px+=(rev?-dh:dh)*(S+gap)*(1-slideP);
+        py+=(-dy)*(S+gap)*(1-slideP);}
+      if(fallFx&&fallFx.mode==='2d'&&fallP<1&&fallFx.moves.has(k)){const[dh,dy]=fallFx.moves.get(k);
+        px+=(rev?-dh:dh)*(S+gap)*(1-fallP);
+        py+=(-dy)*(S+gap)*(1-fallP);}
+      ctx.fillStyle=shade(COL[c.t],.92);rrect(px,py,S,S,8);ctx.fill();ctx.fillStyle='rgba(255,255,255,.10)';rrect(px,py,S,10,8);ctx.fill();
+      if(c.t==='avatar'){ctx.fillStyle='#231007';ctx.beginPath();ctx.arc(px+S/2,py+13,4,0,7);ctx.fill();}
+      else if(c.t==='goal'){ctx.strokeStyle='#0c2a25';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px+S/2,py+13,5,0,7);ctx.stroke();}
+      else if(c.t==='hazard'){ctx.strokeStyle='#3a1118';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px+S/2-4,py+9);ctx.lineTo(px+S/2+4,py+17);ctx.moveTo(px+S/2+4,py+9);ctx.lineTo(px+S/2-4,py+17);ctx.stroke();}
+      const inSwap=swapP<1&&((swapFx.a.h===h&&swapFx.a.y===y)||(swapFx.b.h===h&&swapFx.b.y===y));
+      if(!inSwap){ ctx.fillStyle=(c.t==='push'||c.t==='goal')?'#10130c':'#f3f5fb';ctx.font='600 18px '+mono;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(String(c.count),px+S/2,py+S/2+6);ctx.textAlign='start';ctx.textBaseline='alphabetic'; }
+      gMark(ctx,px+10,py+11,c.g,3.2);
+      if(tgt){ctx.strokeStyle='#7aa2ff';ctx.setLineDash([4,3]);ctx.lineWidth=2.2;rrect(px-1.5,py-1.5,S+3,S+3,9);ctx.stroke();ctx.setLineDash([]);}
+      if(seld){ctx.strokeStyle=COL.avatar;ctx.lineWidth=2.6;rrect(px-1.5,py-1.5,S+3,S+3,9);ctx.stroke();}}
+    if(swapP<1){ // 数字が弧を描いて入れ替わる
+      const A=cellPos(swapFx.a.h,swapFx.a.y),Bq=cellPos(swapFx.b.h,swapFx.b.y);
+      const drawNum=(from,to,val,col2)=>{const mx=(from[0]+to[0])/2,my=Math.min(from[1],to[1])-S*0.45;
+        const x=(1-swapP)*(1-swapP)*from[0]+2*(1-swapP)*swapP*mx+swapP*swapP*to[0];
+        const yv=(1-swapP)*(1-swapP)*from[1]+2*(1-swapP)*swapP*my+swapP*swapP*to[1];
+        ctx.fillStyle=col2;ctx.font='600 18px '+mono;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(String(val),x+S/2,yv+S/2+6);ctx.textAlign='start';ctx.textBaseline='alphabetic';};
+      const ca=g.cells.get(swapFx.a.h+","+swapFx.a.y),cb=g.cells.get(swapFx.b.h+","+swapFx.b.y);
+      if(ca)drawNum(Bq,A,ca.count,(ca.t==='push'||ca.t==='goal')?'#10130c':'#f3f5fb');
+      if(cb)drawNum(A,Bq,cb.count,(cb.t==='push'||cb.t==='goal')?'#10130c':'#f3f5fb'); }
+    ctx.restore();
+    ctx.fillStyle='rgba(139,150,171,.8)';ctx.font='11px '+mono;ctx.fillText('立面 / ELEVATION',ox,oy-12);
+  }
+  function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+  function drawPreview(){pctx.clearRect(0,0,PW,PH);
+    if(state.mode!=='3d'){pv.style.display='none';phEl.style.display='block';return;}
+    pv.style.display='block';phEl.style.display='none';
+    const fold=FOLD[selFront()],g=Engine.compress(state.world,fold.axis,fold.front);
+    const gap=4,availW=PW-12,availH=PH-12;
+    const S=Math.max(3,Math.min(72,Math.floor((availW-(g.W2-1)*gap)/g.W2),Math.floor((availH-(g.H2-1)*gap)/g.H2)));
+    const totW=g.W2*S+(g.W2-1)*gap,totH=g.H2*S+(g.H2-1)*gap,ox=Math.round((PW-totW)/2),oy=Math.round((PH-totH)/2);
+    for(let y=0;y<g.H2;y++)for(let h=0;h<g.W2;h++){const col=fold.rev?(g.W2-1-h):h,px=ox+col*(S+gap),py=oy+(g.H2-1-y)*(S+gap),c=g.cells.get(h+","+y);
+      if(!c){pctx.strokeStyle='rgba(110,124,150,.16)';pctx.strokeRect(px,py,S,S);continue;}
+      pctx.fillStyle=shade(COL[c.t],.92);pctx.fillRect(px,py,S,S);
+      pctx.fillStyle=(c.t==='push'||c.t==='goal')?'#10130c':'#f3f5fb';pctx.font='600 12px '+mono;pctx.textAlign='center';pctx.textBaseline='middle';
+      pctx.fillText(String(c.count),px+S/2,py+S/2+1);pctx.textAlign='start';pctx.textBaseline='alphabetic';}
+  }
+
+  function activeCounts(){return state.mode==='3d'?{av:Engine.countType(state.world,'avatar'),go:Engine.countType(state.world,'goal')}:Game.counts(state.grid2D);}
+  function checkStatus(ev){ if(ev&&ev.win){state.status='win';
+      if(currentStageId&&!testing){ const st=STAGES&&STAGES[currentStageId];
+        const stars=Score.starsFor(state.moves,st&&st.par);
+        markCleared(currentStageId,{stars,moves:state.moves,noUndo:!state.undoUsed,noHint:(state.hintsUsed||0)===0});
+        STATS.wins++; saveStats(); }
+      return;} const c=activeCounts();
+    if(c.av<=0){state.status='lose';state.reason='アバターが全滅した';return;} if(c.go<=0){state.status='lose';state.reason='ゴールが消滅した';return;} state.status='play'; }
+
+  let hasDanger=false;
+  // 予測: アバターがそのdirへ歩くと奈落(Y<0)に落ちて死ぬか。戻り値: 落下先の足元 {nx,ny,nz} / null
+  function predWalk3D(w,x,y,z,dx,dz){ const nx=x+dx,nz=z+dz;
+    if(!w.open&&(nx<0||nx>=w.W||nz<0||nz>=w.D))return null;
+    const at=(X,Y,Z)=>Engine.getVox(w,X,Y,Z); const tc=at(nx,y,nz); let ny=y;
+    if(tc){ if(tc.t==='ground'||tc.t==='push'){ if((w.open||y+1<w.H)&&!at(nx,y+1,nz)&&!at(x,y+1,z))ny=y+1; else return null; } else if(tc.t==='avatar')return null; }
+    const dest=at(nx,ny,nz); if(dest&&(dest.t==='goal'||dest.t==='hazard'))return null;
+    let fy=ny; while(true){ if(fy-1<0)return{nx,ny,nz}; const b=at(nx,fy-1,nz); if(b)return null; fy--; } }
+  // 予測: アバターがShift+dirで前の押せるブロックを押すと、そのブロックが奈落に落ちて消えるか。戻り値: 落ちるブロックのID / null
+  function predPush3D(w,x,y,z,dx,dz){ const nx=x+dx,nz=z+dz;
+    if(!w.open&&(nx<0||nx>=w.W||nz<0||nz>=w.D))return null;
+    const tc=Engine.getVox(w,nx,y,nz); if(!(tc&&tc.t==='push'))return null;
+    const id=tc.id, before=[...w.vox.values()].filter(v=>v.id===id).length;
+    const cl=Engine.cloneWorld(w); if(!Game3D.pushBlock(cl,id,dx,dz))return null; Engine.gravitySettle3D(cl);
+    const after=[...cl.vox.values()].filter(v=>v.id===id).length;
+    return after<before?id:null; }
+  function predWalk2D(g,h,y,dir){ const nh=h+dir; if(!g.open&&(nh<0||nh>=g.W2))return null;
+    const c=(H,Y)=>Game.cell(g,H,Y); const tc=c(nh,y); let ny=y;
+    if(tc){ if(tc.t==='ground'||tc.t==='push'){ if((g.open||y+1<g.H2)&&!c(nh,y+1)&&!c(h,y+1))ny=y+1; else return null; } else if(tc.t==='avatar')return null; }
+    const dest=c(nh,ny); if(dest&&(dest.t==='goal'||dest.t==='hazard'))return null;
+    let fy=ny; while(true){ if(fy-1<0)return{nh,ny}; const b=c(nh,fy-1); if(b)return null; fy--; } }
+  function predPush2D(g,h,y,dir){ const nh=h+dir; if(!g.open&&(nh<0||nh>=g.W2))return null;
+    const tc=Game.cell(g,nh,y); if(!(tc&&tc.t==='push'&&tc.g))return null;   // 重力ありのみ落下
+    const dh=nh+dir; if((!g.open&&(dh<0||dh>=g.W2))||Game.cell(g,dh,y))return null;       // 押せない → 危険なし
+    let fy=y; while(true){ if(fy-1<0)return{nh,y}; if(Game.cell(g,dh,fy-1))return null; fy--; } }
+  function computeDanger(){ const d={floor:new Map(),avatars:[],pushIds:new Set()};
+    if(state.mode==='3d'&&state.world){ const w=state.world;
+      const avs=[...w.vox.entries()].filter(([k,v])=>v.t==='avatar').map(([k])=>k.split(",").map(Number));
+      for(const[x,y,z]of avs){ let danger=false;
+        for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){
+          const wf=predWalk3D(w,x,y,z,dx,dz); if(wf){danger=true;d.floor.set(wf.nx+","+wf.nz,{x:wf.nx,z:wf.nz});}
+          const pid=predPush3D(w,x,y,z,dx,dz); if(pid!=null)d.pushIds.add(pid); }
+        if(danger)d.avatars.push({x,y,z}); }
+    } else if(state.mode==='2d'&&state.grid2D){ const g=state.grid2D;
+      const avs=[...g.cells.entries()].filter(([k,v])=>v.t==='avatar').map(([k])=>k.split(",").map(Number));
+      for(const[h,y]of avs){
+        for(const dir of[1,-1]){
+          const wf=predWalk2D(g,h,y,dir); if(wf)d.floor.set(wf.nh+","+wf.ny,{h:wf.nh,y:wf.ny});
+          const pf=predPush2D(g,h,y,dir); if(pf)d.pushIds.add(pf.nh+","+pf.y); } }
+    }
+    hasDanger=d.floor.size>0||d.avatars.length>0||d.pushIds.size>0;
+    return d; }
+  function drawDanger(now){ const d=computeDanger(); if(!hasDanger)return;
+    const t=SET.anim?(0.5+0.5*Math.sin(now*0.006)):1, al=0.35+0.4*t, WARN='#cf9b5a';
+    if(state.mode==='3d'){
+      for(const{x,z}of d.floor.values()){ const c=[[x-0.42,-0.5,z-0.42],[x+0.42,-0.5,z-0.42],[x+0.42,-0.5,z+0.42],[x-0.42,-0.5,z+0.42]].map(proj);
+        ctx.save();ctx.globalAlpha=al;ctx.strokeStyle=WARN;ctx.lineWidth=2;ctx.setLineDash([5,4]);
+        ctx.beginPath();ctx.moveTo(c[0].x,c[0].y);for(let i=1;i<4;i++)ctx.lineTo(c[i].x,c[i].y);ctx.closePath();ctx.stroke();ctx.setLineDash([]);
+        const a=proj([x,-0.5,z]);ctx.fillStyle=WARN;ctx.beginPath();ctx.moveTo(a.x-5,a.y-13);ctx.lineTo(a.x+5,a.y-13);ctx.lineTo(a.x,a.y-5);ctx.closePath();ctx.fill();ctx.restore(); }
+      for(const id of d.pushIds){ for(const[k,v]of state.world.vox){ if(v.id!==id)continue; const[x,y,z]=k.split(",").map(Number);
+        const a=proj([x,y+0.65,z]);ctx.save();ctx.globalAlpha=al;ctx.fillStyle=WARN;ctx.beginPath();ctx.moveTo(a.x-5,a.y-2);ctx.lineTo(a.x+5,a.y-2);ctx.lineTo(a.x,a.y+6);ctx.closePath();ctx.fill();ctx.restore(); } }
+    } else if(state.layout2d){ const{ox,oy,S,gap,W2,H2,rev}=state.layout2d;
+      const rc=(h,y)=>{const col=rev?(W2-1-h):h;return[ox+col*(S+gap),oy+(H2-1-y)*(S+gap)];};
+      ctx.save();ctx.globalAlpha=al;ctx.strokeStyle=WARN;ctx.lineWidth=2.4;ctx.setLineDash([5,4]);
+      for(const{h,y}of d.floor.values()){const[px,py]=rc(h,y);rrect(px-1,py-1,S+2,S+2,9);ctx.stroke();}
+      for(const k of d.pushIds){const[h,y]=k.split(",").map(Number);const[px,py]=rc(h,y);rrect(px-1,py-1,S+2,S+2,9);ctx.stroke();}
+      ctx.setLineDash([]);ctx.restore(); }
+  }
+  /* 次の一手ヒントの視覚化。ワールド/グリッド座標に矢印を描くのでカメラ回転に追従。キータグを添える。 */
+  function drawKeyTag(px,py,label){ ctx.save(); ctx.font='bold 11px '+mono;
+    const w=ctx.measureText(label).width+12, h=17;
+    ctx.globalAlpha=0.96; ctx.fillStyle='#7aa2ff'; rrect(px-w/2,py-h/2,w,h,6); ctx.fill();
+    ctx.fillStyle='#0c0f17'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label,px,py+0.5);
+    ctx.restore(); }
+  function drawArrowP(ax,ay,bx,by,col){ const ang=Math.atan2(by-ay,bx-ax),hs=11;
+    ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=4; ctx.lineCap='round';
+    ctx.shadowColor=col; ctx.shadowBlur=10;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+    ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(bx,by);
+    ctx.lineTo(bx-hs*Math.cos(ang-0.42),by-hs*Math.sin(ang-0.42));
+    ctx.lineTo(bx-hs*Math.cos(ang+0.42),by-hs*Math.sin(ang+0.42));
+    ctx.closePath(); ctx.fill(); ctx.restore(); }
+  function drawHint(now){ if(!state||!state.hintFx||state.status!=='play')return;
+    const mv=state.hintFx.move; if(state.hintFx.mode!==state.mode)return; // モードが変わったら描かない(盤面変化で消える)
+    const HL='#7aa2ff', pulse=SET.anim?(0.55+0.45*Math.sin(now*0.006)):1;
+    ctx.save(); ctx.globalAlpha=0.5+0.5*pulse;
+    if(mv.type==='fold'){ // 該当フォールドギズモを強調
+      const g=state.gizmoScreen&&state.gizmoScreen[mv.front];
+      if(g){ ctx.save(); ctx.globalAlpha=0.85*pulse+0.15; ctx.fillStyle=HL; ctx.shadowColor=HL; ctx.shadowBlur=18;
+        ctx.beginPath(); ctx.arc(g.x,g.y,9,0,7); ctx.fill(); ctx.restore();
+        drawKeyTag(g.x,g.y-20,'Space'); }
+    } else if(mv.type==='unfold'){ // 描く場所がないので中央上に案内(ボタン発光は別途DOM側で)
+      const cx=LW/2, cy=44; drawKeyTag(cx,cy,'Space で展開');
+    } else if(mv.type==='swap'){ // 2D: 該当2セルを点滅、間に⇄
+      if(state.layout2d){ const{ox,oy,S,gap,W2,H2,rev}=state.layout2d;
+        const rc=(h,y)=>{const col=rev?(W2-1-h):h;return[ox+col*(S+gap),oy+(H2-1-y)*(S+gap)];};
+        const[ax,ay]=rc(mv.h1,mv.y1),[bx,by]=rc(mv.h2,mv.y2);
+        ctx.save(); ctx.strokeStyle=HL; ctx.lineWidth=3; ctx.shadowColor=HL; ctx.shadowBlur=12;
+        rrect(ax-1,ay-1,S+2,S+2,9); ctx.stroke(); rrect(bx-1,by-1,S+2,S+2,9); ctx.stroke(); ctx.restore();
+        const mx=(ax+bx)/2+S/2, my=(ay+by)/2+S/2;
+        ctx.save(); ctx.font='bold 22px '+mono; ctx.fillStyle=HL; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.shadowColor=HL; ctx.shadowBlur=10; ctx.fillText('\u21c4',mx,my); ctx.restore();
+        drawKeyTag(mx,my-24,'クリックで交換'); }
+    } else { // walk / push
+      const isP=mv.type==='push';
+      if(state.mode==='3d'){
+        const avs=[...state.world.vox.entries()].filter(([k,v])=>v.t==='avatar').map(([k])=>k.split(',').map(Number));
+        for(const[x,y,z]of avs){ const base=proj([x,y+0.55,z]), tip=proj([x+mv.dx*0.85,y+0.55,z+mv.dz*0.85]);
+          drawArrowP(base.x,base.y,tip.x,tip.y,HL); }
+        if(isP){ // 押す対象(進行方向の隣接ブロック)を輪郭強調
+          for(const[x,y,z]of avs){ const tx=x+mv.dx,tz=z+mv.dz; const tv=Engine.getVox(state.world,tx,y,tz);
+            if(tv&&tv.t!=='avatar'){ const c=[[tx-0.5,y-0.5,tz-0.5],[tx+0.5,y-0.5,tz-0.5],[tx+0.5,y-0.5,tz+0.5],[tx-0.5,y-0.5,tz+0.5]].map(proj);
+              ctx.save(); ctx.strokeStyle=HL; ctx.lineWidth=2.5; ctx.shadowColor=HL; ctx.shadowBlur=8;
+              ctx.beginPath(); ctx.moveTo(c[0].x,c[0].y); for(let i=1;i<4;i++)ctx.lineTo(c[i].x,c[i].y); ctx.closePath(); ctx.stroke(); ctx.restore(); } } }
+        const key=keyForWorldDir(mv.dx,mv.dz);
+        const anchor=proj([ (state.dims.W-1)/2 + mv.dx*((state.dims.W)/2+0.4), 0.4, (state.dims.D-1)/2 + mv.dz*((state.dims.D)/2+0.4) ]);
+        drawKeyTag(anchor.x,anchor.y,(isP?'Shift+':'')+(key||'移動'));
+      } else if(state.layout2d){ const{ox,oy,S,gap,W2,H2,rev}=state.layout2d;
+        const rc=(h,y)=>{const col=rev?(W2-1-h):h;return[ox+col*(S+gap)+S/2,oy+(H2-1-y)*(S+gap)+S/2];};
+        const scr=mv.dx*(rev?-1:1); // 論理dx→画面方向
+        const avs=[...state.grid2D.cells.entries()].filter(([k,v])=>v.t==='avatar').map(([k])=>k.split(',').map(Number));
+        for(const[h,y]of avs){ const[cx,cy]=rc(h,y); drawArrowP(cx-scr*S*0.3,cy,cx+scr*S*0.55,cy,HL); }
+        if(isP){ for(const[h,y]of avs){ const th=h+scr, tv=state.grid2D.cells.get(th+','+y);
+            if(tv&&tv.t!=='avatar'){ const[px,py]=rc(th,y); ctx.save(); ctx.strokeStyle=HL; ctx.lineWidth=2.5; ctx.shadowColor=HL; ctx.shadowBlur=8;
+              rrect(px-S/2-1,py-S/2-1,S+2,S+2,9); ctx.stroke(); ctx.restore(); } } }
+        const label=(isP?'Shift+':'')+(scr>0?'\u2192':'\u2190');
+        const anchorX=ox+(scr>0?(W2*(S+gap)+6):(-6)), anchorY=oy+(H2*(S+gap))/2;
+        drawKeyTag(anchorX,anchorY,label); }
+    }
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.restore(); }
+  let lastReadout='',lastStatusKey='';
+  function render(now){ now=now||performance.now();
+    if(trans&&trans.kind==='compress'&&trans.camFrom){ const q=easeOut(Math.min(1,prog(trans,now)/0.55));
+      const dy=Math.atan2(Math.sin(trans.camTo.yaw-trans.camFrom.yaw),Math.cos(trans.camTo.yaw-trans.camFrom.yaw));
+      cam.yaw=trans.camFrom.yaw+dy*q; cam.pitch=trans.camFrom.pitch+(trans.camTo.pitch-trans.camFrom.pitch)*q; }
+    B=basis(cam.yaw,cam.pitch); ctx.clearRect(0,0,LW,LH);
+    ctx.save();
+    if(shakeFx){const p=prog(shakeFx,now),a=shakeFx.amp*(1-p);ctx.translate(Math.sin(now*0.09)*a,Math.cos(now*0.117)*a);}
+    if(trans&&trans.kind==='compress'){ const p=prog(trans,now);
+      if(p<0.55){ const q=easeOut(p/0.55),fold=FOLD[trans.fold];
+        const fxFn=vx=>{ const off=[0,0,0];
+          if(fold.axis==='z'){const fz=fold.front==='max'?trans.dims.D-1:0;off[2]=(fz-vx.z)*q;}
+          else{const fx2=fold.front==='max'?trans.dims.W-1:0;off[0]=(fx2-vx.x)*q;}
+          return{ox:off[0],oy:off[1],oz:off[2],alpha:1-0.45*q}; };
+        draw3D(trans.world,fxFn,true); }
+      else { draw2D(now,(p-0.55)/0.45); } }
+    else if(trans&&trans.kind==='reconstruct'){ const p=prog(trans,now),fold=FOLD[trans.fold],Dlen=fold.axis==='z'?state.dims.D:state.dims.W;
+      const fp3=(fallFx&&fallFx.mode==='3d')?(1-easeIn(prog(fallFx,now))):0;
+      const fxFn=vx=>{ let i;
+        if(fold.axis==='z')i=fold.front==='max'?(state.dims.D-1-vx.z):vx.z;
+        else i=fold.front==='max'?(state.dims.W-1-vx.x):vx.x;
+        const p0=0.08+0.72*(i/Math.max(1,Dlen)),s=Math.max(0,Math.min(1,(p-p0)/0.2));
+        const r={s,glow:(1-s)*0.9};
+        if(fp3>0){const off=fallFx.moves.get(vx.x+","+vx.y+","+vx.z);if(off){r.ox=off[0]*fp3;r.oy=off[1]*fp3;r.oz=off[2]*fp3;}}
+        return r; };
+      draw3D(state.world,fxFn); }
+    else { if(state.mode==='3d'){ let fxFn=null;
+        const sp=(slideFx&&slideFx.mode==='3d')?easeOut(prog(slideFx,now)):1;
+        const fp3=(fallFx&&fallFx.mode==='3d')?(1-easeIn(prog(fallFx,now))):0;
+        if(sp<1||fp3>0){ fxFn=vx=>{ const key=vx.x+","+vx.y+","+vx.z; let ox=0,oy2=0,oz=0,hit=false;
+            if(sp<1&&slideFx.moves.has(key)){const off=slideFx.moves.get(key);ox+=off[0]*(1-sp);oy2+=off[1]*(1-sp);oz+=off[2]*(1-sp);hit=true;}
+            if(fp3>0&&fallFx.moves.has(key)){const off=fallFx.moves.get(key);ox+=off[0]*fp3;oy2+=off[1]*fp3;oz+=off[2]*fp3;hit=true;}
+            return hit?{ox,oy:oy2,oz}:null; }; }
+        draw3D(state.world,fxFn); }
+      else draw2D(now); }
+    if(!trans&&state.status==='play')drawDanger(now); else hasDanger=false;
+    if(!trans&&state.status==='play')drawHint(now);
+    drawGhosts(now);
+    drawParticles(now);
+    ctx.restore();
+    drawPreview();
+    const noFold=state.mode==='3d'&&!anyFoldAllowed();
+    const fold=noFold?null:FOLD[selFront()],c=activeCounts();
+    const stName=(currentStageId&&STAGES&&STAGES[currentStageId])?`<span>${STAGES[currentStageId].name||currentStageId}</span>`:(testing?'<span>テストプレイ</span>':'');
+    const ro=stName+(state.mode==='3d'
+      ?(noFold?`<b>3D</b> · <span class="tag">圧縮不可（3D専用ステージ）</span>`:`<b>3D</b> · 畳む向き <span class="tag">${selFront()}</span>（軸 ${fold.axis}/手前 ${fold.front}）· ${cam.locked?'固定':'追従'}`)
+      :`<b>2D</b> 立面 · 軸 <span class="tag">${FOLD[state.foldFront].axis}</span>`)
+      +`<span>アバター <b class="count-av">×${c.av}</b></span><span>ゴール <b class="count-go">×${c.go}</b></span>`
+      +(()=>{const p=(currentStageId&&STAGES&&STAGES[currentStageId])?STAGES[currentStageId].par:null;
+        return `<span>手数 <b>${state.moves||0}</b>${p?`<span class="parRef"> / 最短${p}</span>`:''}</span>`;})();
+    if(ro!==lastReadout){readout.innerHTML=ro;lastReadout=ro;}
+    badge.textContent=state.mode==='3d'?'3D':'2D';
+    hintEl.textContent=state.status!=='play'?'':(state.mode==='3d'?('ドラッグ=回転 ・ WASD/カーソル=登る ・ Shift+移動=押す'+(noFold?'':' ・ 床の矢印=畳む向き ・ Space=2Dへ')):'←/→=登る ・ Shift+←/→=押す ・ アバター→隣接で数字入替 ・ Space=3Dへ');
+    document.getElementById('keyhint').textContent=state.mode==='3d'?('移動=登る／Shift+移動=押す・ドラッグ回転'+(noFold?'':'・Space切替')+'・C追従・U戻す・R'):'←/→=登る／Shift+←/→=押す・Space切替・U戻す・R';
+    document.getElementById('toggle').disabled=state.status!=='play'||noFold;
+    document.getElementById('auto').disabled=state.mode!=='3d';
+    document.getElementById('undo').disabled=undoStack.length===0;
+    document.getElementById('hintBtn').disabled=!curHint;
+    if(!hintBusy)document.getElementById('nextMoveBtn').disabled=state.status!=='play';
+    const stKey=state.status+'|'+state.reason;
+    if(stKey!==lastStatusKey){ lastStatusKey=stKey;
+      const ub=document.getElementById('undo'),rb=document.getElementById('reset');
+      if(state.status==='win'){statusEl.className='status show win';
+        const idx=currentStageId?stageOrder.indexOf(currentStageId):-1;
+        const nextId=(idx>=0&&idx+1<stageOrder.length)?stageOrder[idx+1]:null;
+        let resHtml='';
+        { const st=(currentStageId&&STAGES)?STAGES[currentStageId]:null;
+          const stars=st?Score.starsFor(state.moves,st.par):null;
+          const badges=((!state.undoUsed)?'<span class="bdg">アンドゥなし</span>':'')+(((state.hintsUsed||0)===0)?'<span class="bdg">ヒントなし</span>':'');
+          if(st)resHtml='<span class="resline"><span class="stars">'+Score.starStr(stars)+'</span> 手数 '+(state.moves||0)+(st.par?' ／ 最短 '+st.par:'')+badges+'</span>';
+          else resHtml='<span class="resline">手数 '+(state.moves||0)+badges+'</span>'; }
+        statusEl.innerHTML='<b>クリア</b>'+resHtml+'<span class="why">アバターがゴールに到達</span>'
+          +(nextId?'<button id="nextStageBtn" class="primary">次のステージへ</button>':'<button id="toTitleBtn" class="primary">タイトルへ</button>');
+        ub.classList.remove('hl');rb.classList.add('hl');
+        if(nextId) document.getElementById('nextStageBtn').onclick=()=>{Snd.select();startStage(nextId);};
+        else document.getElementById('toTitleBtn').onclick=()=>{Snd.ui();showScreen('title');};}
+      else if(state.status==='lose'){statusEl.className='status show lose';statusEl.innerHTML='<b>ゲームオーバー</b><span class="why">'+state.reason+'</span>';ub.classList.add('hl');rb.classList.add('hl');}
+      else{statusEl.className='status';ub.classList.remove('hl');rb.classList.remove('hl');} }
+    if((hasDanger||state.hintFx)&&SET.anim&&!fxLoop)fxKick();
+    { const tgl=document.getElementById('toggle');
+      if(tgl)tgl.classList.toggle('hintGlow', !!(state.hintFx&&(state.hintFx.move.type==='unfold'||state.hintFx.move.type==='fold'))); }
+  }
+
+  /* 操作 */
+  const CANON_YAW={'+z':0,'-z':Math.PI,'+x':Math.PI/2,'-x':-Math.PI/2};
+  function statusFx(prev){ if(state.status===prev)return;
+    if(state.status==='win'){ Snd.win(); spawnGoalRing(); }
+    else if(state.status==='lose'){ Snd.lose(); startShake(5); } }
+  function spawnGoalRing(){ try{
+    if(state.mode==='3d'){ for(const[k,v]of state.world.vox)if(v.t==='goal'){const[x,y,z]=k.split(",").map(Number);const p=proj([x,y,z]);spawnRing(p.x,p.y,'#46c7a8',true);} }
+    else if(state.layout2d){ const{ox,oy,S,gap,W2,H2,rev}=state.layout2d;
+      for(const[k,c]of state.grid2D.cells)if(c.t==='goal'){const[h,y]=k.split(",").map(Number);const col=rev?(W2-1-h):h;spawnRing(ox+col*(S+gap)+S/2,oy+(H2-1-y)*(S+gap)+S/2,'#46c7a8',true);} } }catch(e){} }
+  function toggleDim(){ if(state.status!=='play')return; if(state.mode==='3d'&&!anyFoldAllowed()){Snd.blocked();return;}
+    const wasFold=state.mode==='3d';
+    edSolverRecordMove(wasFold?{type:'fold',front:selFront()}:{type:'unfold'});
+    snapshot(); fallFx=null;
+    clearHint();
+    state.moves=(state.moves||0)+1; STATS.moves++; if(wasFold)STATS.folds++; else STATS.unfolds++; saveStats();
+    const prev=state.status;
+    if(state.mode==='3d'){ const sel=selFront(),fold=FOLD[sel];
+      const oldWorld=Engine.cloneWorld(state.world), avBefore=Engine.countType(state.world,'avatar');
+      const g=Engine.compress(state.world,fold.axis,fold.front);
+      const rawG=Engine.cloneGrid(g), rawAv=Game.counts(rawG).av;
+      Engine.gravitySettle(g);
+      const gev=Game.gravityDropAvatars(g);
+      state.grid2D=g;state.foldFront=sel;state.mode='2d';state.sel=null;
+      Snd.compress(); if(rawAv<avBefore)Snd.fallDeath();               // 圧縮そのもの(前面塞がり)による消滅は即時に鳴らす
+      const fd=diffFall2D(rawG.cells,g.cells,g.W2,g.H2);
+      statVanished(fd.vanished);
+      const gh=makeGhosts2D(g,fd.vanished,fd.moves);
+      const avGhost=gh.ghosts.some(x=>x.t==='avatar');
+      scheduleFall('2d',fd.moves,gh.ghosts,DUR.compress,avGhost);       // 落下(重力)による消滅音はゴースト完了時
+      for(const b of gh.bursts)burstAt('2d',b.h,b.y,0,b.t);
+      if(DUR.compress>0){ trans={kind:'compress',world:oldWorld,fold:sel,dims:{...state.dims},t0:performance.now(),dur:DUR.compress,
+        camFrom:{yaw:cam.yaw,pitch:cam.pitch},camTo:{yaw:CANON_YAW[sel],pitch:0.18}}; fxKick(); }
+      checkStatus(gev); }
+    else { const fold=state.foldFront;
+      const wRaw=Engine.reconstruct(state.grid2D,state.dims);
+      const rawClone=Engine.cloneWorld(wRaw);
+      Engine.gravitySettle3D(wRaw); state.world=wRaw; state.grid2D=null;state.mode='3d';state.sel=null;
+      const gev=Game3D.gravityDropAvatars(state.world);
+      const avAfter=Engine.countType(state.world,'avatar');
+      Snd.reconstruct(avAfter);
+      const fd=diff3D(rawClone,state.world);
+      statVanished(fd.vanished);
+      const gh=makeGhosts3D(state.world,fd.vanished,fd.moves);
+      const avGhost=gh.ghosts.some(x=>x.t==='avatar');
+      scheduleFall('3d',fd.moves,gh.ghosts,DUR.reconstruct,avGhost||(gev.dead&&!gh.ghosts.length));
+      for(const b of gh.bursts)burstAt('3d',b.x,b.y,b.z,b.t);
+      if(DUR.reconstruct>0){ trans={kind:'reconstruct',fold,t0:performance.now(),dur:DUR.reconstruct}; fxKick(); }
+      checkStatus(gev); }
+    statusFx(prev); render(); }
+  function moveAvatars(screenDir,mode){ if(state.status!=='play'||state.mode!=='2d')return;
+    state.sel=null; const dir=screenDir*(FOLD[state.foldFront].rev?-1:1); snapshot(); fallFx=null;
+    const prev=state.status, before=Engine.cloneGrid(state.grid2D);
+    const ev=Game.move(state.grid2D,dir,mode); Engine.gravitySettle(state.grid2D);
+    const d=diff2D(before.cells,state.grid2D.cells);
+    const effective=d.moves.size>0||d.vanished.length>0||!!ev.win||!!ev.dead;
+    if(effective){ state.moves=(state.moves||0)+1; STATS.moves++;
+      if(mode==='push'&&[...d.moves.keys()].some(k=>{const c=state.grid2D.cells.get(k);return c&&c.t!=='avatar';}))STATS.pushes++;
+      saveStats(); statVanished(d.vanished);
+      edSolverRecordMove({type:mode==='push'?'push':'walk',dx:dir,dz:0}); clearHint(); }
+    else undoStack.pop();
+    startSlide2D(d.moves);
+    let stepped=false,climbed=false,landed=false;
+    for(const[k,off]of d.moves){ const c=state.grid2D.cells.get(k); if(!c)continue;
+      if(c.t==='avatar'){ stepped=true; if(off[1]<0)climbed=true; if(off[1]>=2)landed=true; } }
+    const gh=makeGhosts2D(state.grid2D,d.vanished,d.moves,dir);
+    if(gh.ghosts.length)scheduleFall('2d',new Map(),gh.ghosts,0,false,DUR.slide);   // 押し出し(横スライド)後に落下フェード
+    if(state.layout2d){ const{ox,oy,S,gap,W2,H2,rev}=state.layout2d;
+      for(const v of gh.bursts){ const col=rev?(W2-1-v.h):v.h;
+        spawnBurst(ox+col*(S+gap)+S/2,oy+(H2-1-v.y)*(S+gap)+S/2,v.t==='avatar'?'#e0687e':'#bcd4ee'); }
+      if(landed){ for(const[k,off]of d.moves){const c=state.grid2D.cells.get(k);if(c&&c.t==='avatar'&&off[1]>=2){const[h,y]=k.split(",").map(Number);const col=rev?(W2-1-h):h;spawnDust(ox+col*(S+gap)+S/2,oy+(H2-1-y)*(S+gap)+S);}} } }
+    const pushed=[...d.moves.keys()].some(k=>{const c=state.grid2D.cells.get(k);return c&&c.t!=='avatar';});
+    if(d.vanished.some(v=>v.t==='avatar'))Snd.fallDeath();
+    if(pushed)Snd.push(); else if(landed)Snd.land(); else if(climbed)Snd.climb(); else if(stepped)Snd.step(); else Snd.blocked();
+    checkStatus(ev); statusFx(prev); render(); }
+  function moveAxes(){const snap=(ax,az)=>{let best=[1,0,0],bd=-1e9;for(const[cx,cz]of[[1,0],[-1,0],[0,1],[0,-1]]){const d=ax*cx+az*cz;if(d>bd){bd=d;best=[cx,0,cz];}}return best;};
+    return{fwd:snap(B.f[0],B.f[2]),right:snap(B.r[0],B.r[2])};}
+  function move3D(dx,dz,mode){ if(state.status!=='play'||state.mode!=='3d')return; snapshot(); fallFx=null;
+    const prev=state.status, before=Engine.cloneWorld(state.world);
+    const ev=Game3D.move(state.world,dx,dz,mode); Engine.gravitySettle3D(state.world);
+    const d=diff3D(before,state.world);
+    const effective=d.moves.size>0||d.vanished.length>0||!!ev.win||!!ev.dead;
+    if(effective){ state.moves=(state.moves||0)+1; STATS.moves++; edSolverRecordMove({type:mode==='push'?'push':'walk',dx,dz}); clearHint(); }
+    else undoStack.pop(); // 何も起きなかった入力はアンドゥ履歴にも残さない
+    const m3=new Map();for(const[k,off]of d.moves)m3.set(k,off);
+    startSlide3D(m3);
+    let stepped=false,climbed=false,landed=false,pushed=false;
+    for(const[k,off]of d.moves){ const v=state.world.vox.get(k); if(!v)continue;
+      if(v.t==='avatar'){ stepped=true; if(off[1]<0)climbed=true; if(off[1]>=2)landed=true; } else pushed=true; }
+    if(pushed){STATS.pushes++;} if(effective){saveStats();} statVanished(d.vanished);
+    const gh=makeGhosts3D(state.world,d.vanished,m3,dx,dz);
+    if(gh.ghosts.length)scheduleFall('3d',new Map(),gh.ghosts,0,false,DUR.slide);   // 押し出し(横スライド)後に落下フェード
+    for(const v of gh.bursts){ const p=proj([v.x,v.y,v.z]); spawnBurst(p.x,p.y,v.t==='avatar'?'#e0687e':'#bcd4ee'); }
+    if(landed){ for(const[k,off]of d.moves){const v=state.world.vox.get(k);if(v&&v.t==='avatar'&&off[1]>=2){const[x,y,z]=k.split(",").map(Number);const p=proj([x,y-0.5,z]);spawnDust(p.x,p.y);}} }
+    if(d.vanished.some(v=>v.t==='avatar'))Snd.fallDeath();
+    if(pushed)Snd.push(); else if(landed)Snd.land(); else if(climbed)Snd.climb(); else if(stepped)Snd.step(); else Snd.blocked();
+    checkStatus(ev); statusFx(prev); render(); }
+  function clickCell(h,y){ if(state.status!=='play'||state.mode!=='2d'||!stageRules.swapAllow)return; const c=Game.cell(state.grid2D,h,y);
+    if(!state.sel){ if(c&&c.t==='avatar'){state.sel={h,y};Snd.select();} render(); return; }   // 起点はアバターのみ
+    if(state.sel.h===h&&state.sel.y===y){ state.sel=null; Snd.ui(); render(); return; }           // 同セルで解除
+    if(Math.abs(state.sel.h-h)+Math.abs(state.sel.y-y)===1 && c){                                  // 隣接の非空 → 交換
+      const prev=state.status,a={...state.sel};
+      const sh=state.sel.h, sy=state.sel.y;
+      snapshot(); const ok=Game.swap(state.grid2D,sh,sy,h,y); state.sel=null;
+      if(ok){ state.moves=(state.moves||0)+1; STATS.moves++; STATS.swaps++; saveStats();
+        edSolverRecordMove({type:'swap',h1:sh,y1:sy,h2:h,y2:y}); clearHint(); }
+      else undoStack.pop();
+      if(ok){ Snd.swap(); if(DUR.swap>0){swapFx={a,b:{h,y},t0:performance.now(),dur:DUR.swap};fxKick();} Engine.gravitySettle(state.grid2D); }
+      checkStatus(null); statusFx(prev); render(); return; }
+    state.sel=(c&&c.t==='avatar')?{h,y}:null; if(state.sel)Snd.select(); render(); }               // それ以外：別アバターで選び直し
+
+  /* 入力 */
+  let drag=false,lx=0,ly=0,moved=0;
+  cv.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;moved=0;cv.setPointerCapture(e.pointerId);});
+  cv.addEventListener('pointermove',e=>{ if(!drag||state.mode!=='3d')return; const dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
+    cam.yaw-=dx*0.01; cam.pitch=Math.max(-1.35,Math.min(1.35,cam.pitch+dy*0.01)); render(); });
+  cv.addEventListener('pointerup',e=>{ const wasDrag=drag; drag=false; const r=cv.getBoundingClientRect(),sc=LW/r.width,mx=(e.clientX-r.left)*sc,my=(e.clientY-r.top)*sc;
+    if(state.mode==='3d'){ if(wasDrag&&moved<4){ let best=null,bd=1e9; for(const k in (state.gizmoScreen||{})){const gz=state.gizmoScreen[k];const d=Math.hypot(gz.x-mx,gz.y-my);if(d<bd){bd=d;best=k;}} if(best&&bd<40){cam.locked=(cam.locked===best)?null:best;Snd.select();render();} } }
+    else if(state.layout2d){ const {ox,oy,S,gap,W2,H2,rev}=state.layout2d; const col=Math.floor((mx-ox)/(S+gap)),row=Math.floor((my-oy)/(S+gap));
+      if(col>=0&&col<W2&&row>=0&&row<H2){ const h=rev?(W2-1-col):col,y=H2-1-row,px=ox+col*(S+gap),py=oy+row*(S+gap); if(mx>=px&&mx<=px+S&&my>=py&&my<=py+S) clickCell(h,y); } } });
+  cv.addEventListener('wheel',e=>{ if(state.mode!=='3d')return; e.preventDefault(); cam.zoom=Math.max(30,Math.min(120,cam.zoom*(e.deltaY<0?1.1:0.9))); render(); },{passive:false});
+  document.getElementById('toggle').onclick=toggleDim;
+  document.getElementById('auto').onclick=()=>{cam.locked=null;Snd.ui();render();};
+  document.getElementById('undo').onclick=()=>{Snd.ui();undo();};
+  document.getElementById('reset').onclick=()=>{Snd.ui();reset();};
+  function syncOptsUI(){ const q=id=>document.getElementById(id); if(!q('optSound'))return;
+    q('optSound').checked=SET.sound; q('optVol').value=Math.round(SET.vol*100);
+    q('optAnim').checked=SET.anim; q('optShake').checked=SET.shake; }
+  document.getElementById('optIconBtn').onclick=openOptions;
+  document.getElementById('hintBtn').onclick=()=>{Snd.ui();toggleTutHint();};
+  document.getElementById('tutHintClose').onclick=()=>{ document.getElementById('tutHint').style.display='none'; };
+  document.getElementById('optClose').onclick=()=>{Snd.ui();closeOptions();};
+  document.getElementById('optSound').onchange=e=>{ SET.sound=e.target.checked; saveSet(); applySettings(); if(SET.sound)Snd.ui(); };
+  document.getElementById('optVol').oninput=e=>{ SET.vol=(parseInt(e.target.value)||0)/100; saveSet(); Snd.setVolume(SET.vol); };
+  document.getElementById('optVol').onchange=()=>{ Snd.ui(); };
+  document.getElementById('optAnim').onchange=e=>{ SET.anim=e.target.checked; saveSet(); applySettings(); };
+  document.getElementById('optShake').onchange=e=>{ SET.shake=e.target.checked; saveSet(); applySettings(); };
+  window.addEventListener('pointerdown',()=>Snd.ensure(),{once:true});
+  window.addEventListener('keydown',()=>Snd.ensure(),{once:true});
+  window.addEventListener('keydown',e=>{
+    if(editing)return;
+    if(screen!=='game')return;
+    if(e.key==='r'||e.key==='R'){reset();return;}
+    if(e.key==='u'||e.key==='U'||(e.ctrlKey&&e.key==='z')){e.preventDefault();undo();return;}
+    if(e.key==='c'||e.key==='C'){cam.locked=null;render();return;}
+    if(state.status!=='play')return;
+    if(e.key===' '||e.key==='Enter'){e.preventDefault();toggleDim();return;}
+    const mode=e.shiftKey?'push':'climb';
+    const k=e.key.length===1?e.key.toLowerCase():e.key;
+    if(state.mode==='2d'){
+      if(k==='arrowleft'||k==='a'){e.preventDefault();moveAvatars(-1,mode);}
+      else if(k==='arrowright'||k==='d'){e.preventDefault();moveAvatars(1,mode);}
+    } else {
+      const {fwd,right}=moveAxes();
+      if(k==='arrowup'||k==='w'){e.preventDefault();move3D(fwd[0],fwd[2],mode);}
+      else if(k==='arrowdown'||k==='s'){e.preventDefault();move3D(-fwd[0],-fwd[2],mode);}
+      else if(k==='arrowright'||k==='d'){e.preventDefault();move3D(right[0],right[2],mode);}
+      else if(k==='arrowleft'||k==='a'){e.preventDefault();move3D(-right[0],-right[2],mode);}
+    }
+  });
+
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  cv.width=LW*DPR;cv.height=LH*DPR;cv.style.aspectRatio=LW+'/'+LH;ctx.scale(DPR,DPR);
+  pv.width=PW*DPR;pv.height=PH*DPR;pv.style.aspectRatio=PW+'/'+PH;pv.style.width='100%';pctx.scale(DPR,DPR);
+
+  /* ================= エディタ ================= */
+  const e=id=>document.getElementById(id);
+  const edCv=e('edGrid'),edCtx=edCv.getContext('2d'),ed3=e('ed3d'),ed3ctx=ed3.getContext('2d');
+  const EDW=420,EDH=360,E3W=300,E3H=300;
+  const TYPES=[['ground','地面'],['push','押せる'],['goal','ゴール'],['hazard','障害物'],['avatar','アバター']];
+  let ed=null, editing=false, testing=false, edCam={yaw:0.7,pitch:0.5,zoom:36};
+  let edSolverState={intendedPar:null,intendedPath:null,lastSolution:null,running:false,controller:null,recording:false,recordedPath:[]};
+  const sleepUI=ms=>new Promise(r=>setTimeout(r,ms));
+  edCv.width=EDW*DPR;edCv.height=EDH*DPR;edCv.style.width='100%';edCv.style.maxWidth=EDW+'px';edCv.style.aspectRatio=EDW+'/'+EDH;edCtx.scale(DPR,DPR);
+  ed3.width=E3W*DPR;ed3.height=E3H*DPR;ed3.style.width='100%';ed3.style.maxWidth=E3W+'px';ed3.style.aspectRatio=E3W+'/'+E3H;ed3ctx.scale(DPR,DPR);
+
+  function edNew(){return{world:Engine.makeWorld(4,3,4),dims:{W:4,H:3,D:4},meta:{id:'stageXX',name:'新ステージ',tier:1,order:99,foldAllow:{'+x':true,'-x':true,'+z':true,'-z':true},swapAllow:true,walls:true,hint:''},tool:{type:'ground',g:false,erase:false,link:false},axis:'y',idx:0,nextGrp:1,linkSel:null};}
+  function edMaxGrp(w){let m=0;for(const v of w.vox.values())if(v.t==='push'&&v.grp!=null)m=Math.max(m,v.grp);return m;}
+  function edMaterializeGroups(w){ for(const v of w.vox.values())if(v.t==='push'&&v.grp==null)v.grp=v.id; Engine.assignIds(w); } // 互換読込のpushを現在の連結成分でグループ化
+  function edFromStage(st){const w=worldFromStage(st); edMaterializeGroups(w); const r=rulesFromStage(st);
+    return{world:w,dims:{...st.dims},meta:{id:st.id||'stageXX',name:st.name||'',tier:st.tier||1,order:st.order||99,foldAllow:{...r.foldAllow},swapAllow:r.swapAllow,walls:st.walls!==false,hint:st.hint||''},tool:{type:'ground',g:false,erase:false,link:false},axis:'y',idx:0,nextGrp:edMaxGrp(w)+1,linkSel:null};}
+
+  /* ===== SOLVER連携（エディタ側UI） solver_spec.md 7章準拠 ===== */
+  function edSolverReset(){ edSolverState={intendedPar:null,intendedPath:null,lastSolution:null,running:false,controller:null,recording:false,recordedPath:[]};
+    if(e('edSolverResult'))edSolverRenderResult('まだ探索していません。');
+    if(e('edSolverReplay'))e('edSolverReplay').disabled=true;
+    if(e('edSolverProgress'))e('edSolverProgress').textContent='';
+    edSolverSyncRecordBtn(); }
+  function edSolverRenderResult(text){ const el=e('edSolverResult'); if(el)el.textContent=text; }
+  function edSolverSettings(){ return{
+    stateCap:Math.max(1000,parseInt(e('edSolverStateCap').value)||200000),
+    timeMs:Math.max(1000,(parseFloat(e('edSolverTimeCap').value)||15)*1000),
+    includeSwap:e('edSolverSwap').checked,
+    deadlock:e('edSolverDeadlock').checked }; }
+  function edSolverBuildStart(){ return{node:{mode:'3d',world:Engine.cloneWorld(ed.world),dims:{...ed.dims}},rules:rulesFromStage(ed.meta)}; }
+  function edSolverSetRunning(on){ edSolverState.running=on;
+    e('edSolverRun').disabled=on; e('edSolverCheck').disabled=on; e('edSolverCancel').disabled=!on;
+    if(on)e('edSolverReplay').disabled=true; if(!on)e('edSolverProgress').textContent=''; }
+  function edSolverCancel(){ if(edSolverState.controller)edSolverState.controller.aborted=true; }
+  async function edSolverRun(){ if(!ed||edSolverState.running)return;
+    edSolverSetRunning(true); edSolverState.controller={aborted:false};
+    const{node,rules}=edSolverBuildStart(); const opts=edSolverSettings();
+    edSolverRenderResult('探索中…');
+    const r=await Solver.search(node,rules,{stateCap:opts.stateCap,timeMs:opts.timeMs,includeSwap:opts.includeSwap,
+      signal:edSolverState.controller,onProgress:p=>{e('edSolverProgress').textContent='到達状態数: '+p.visited;}});
+    edSolverState.lastSolution=r; edSolverSetRunning(false);
+    if(r.status==='win'){ e('edSolverReplay').disabled=false;
+      edSolverRenderResult('\u2705 \u89e3\u3042\u308a  par='+r.par+'\u624b\n\n'+Solver.formatPath(r.path)+'\n\n(\u5230\u9054\u72b6\u614b\u6570: '+r.visited+')'); }
+    else if(r.status==='no-solution'){
+      let msg='\u274c '+(opts.includeSwap?'\u89e3\u306a\u3057':'\u89e3\u306a\u3057\uff08swap \u3092\u9664\u304f\u63a2\u7d22\uff09')+'\n(\u5230\u9054\u72b6\u614b\u6570: '+r.visited+')';
+      if(!opts.includeSwap)msg+='\n\u2192 \u6570\u5b57\u5165\u308c\u66ff\u3048(swap)\u304c\u89e3\u306e\u672c\u8cea\u306e\u3068\u304d\u306f\u3001\u300c\u6570\u5b57\u5165\u308c\u66ff\u3048\u3092\u63a2\u7d22\u306b\u542b\u3081\u308b\u300d\u3092\u6709\u52b9\u306b\u3057\u3066\u518d\u5b9f\u884c\u3057\u3066\u304f\u3060\u3055\u3044\u3002';
+      edSolverRenderResult(msg); }
+    else { edSolverRenderResult('\u26a0\ufe0f \u672a\u78ba\u5b9a\uff08\u63a2\u7d22\u6253\u3061\u5207\u308a: '+(r.reason==='time'?'\u6642\u9593\u4e0a\u9650':r.reason==='states'?'\u72b6\u614b\u6570\u4e0a\u9650':'\u30ad\u30e3\u30f3\u30bb\u30eb')+'\uff09\n(\u5230\u9054\u72b6\u614b\u6570: '+r.visited+')\n\u2192 \u4e0a\u9650\u3092\u4e0a\u3052\u3066\u518d\u5b9f\u884c\u3059\u308b\u3068\u78ba\u5b9a\u3059\u308b\u304b\u3082\u3057\u308c\u307e\u305b\u3093\u3002'); } }
+  async function edSolverCheck(){ if(!ed||edSolverState.running)return;
+    edSolverSetRunning(true); edSolverState.controller={aborted:false};
+    const rules=rulesFromStage(ed.meta); const opts=edSolverSettings(); const lines=[];
+    edSolverRenderResult('\u8a2d\u8a08\u30c1\u30a7\u30c3\u30af\u4e2d\u2026\uff08\u53ef\u5426\u5224\u5b9a\uff09');
+    const r=await Solver.search({mode:'3d',world:Engine.cloneWorld(ed.world),dims:{...ed.dims}},rules,
+      {stateCap:opts.stateCap,timeMs:opts.timeMs,includeSwap:opts.includeSwap,signal:edSolverState.controller,
+       onProgress:p=>{e('edSolverProgress').textContent='\u53ef\u5426\u5224\u5b9a\u4e2d\u2026 \u72b6\u614b\u6570: '+p.visited;}});
+    edSolverState.lastSolution=r;
+    if(r.status==='win'){ lines.push('\u2705 \u89e3\u3042\u308a  par='+r.par+'\u624b'); e('edSolverReplay').disabled=false; }
+    else if(r.status==='no-solution'){ lines.push(opts.includeSwap?'\u274c \u89e3\u306a\u3057':'\u274c \u89e3\u306a\u3057\uff08swap \u3092\u9664\u304f\u63a2\u7d22\uff09'); e('edSolverReplay').disabled=true; }
+    else { lines.push('\u26a0\ufe0f \u53ef\u5426: \u672a\u78ba\u5b9a\uff08\u63a2\u7d22\u6253\u3061\u5207\u308a\uff09'); e('edSolverReplay').disabled=true; }
+    if(!edSolverState.controller.aborted){
+      if(r.status!=='truncated'){
+        edSolverRenderResult(lines.join('\n')+'\n\n\u30ea\u30fc\u30af\u5224\u5b9a\u4e2d\u2026');
+        const rFoldless=await Solver.search({mode:'3d',world:Engine.cloneWorld(ed.world),dims:{...ed.dims}},rules,
+          {stateCap:opts.stateCap,timeMs:opts.timeMs,includeSwap:opts.includeSwap,foldless:true,signal:edSolverState.controller,
+           onProgress:p=>{e('edSolverProgress').textContent='\u30ea\u30fc\u30af\u5224\u5b9a\u4e2d\u2026 \u72b6\u614b\u6570: '+p.visited;}});
+        if(rFoldless.status==='win')lines.push('\u26a0\ufe0f \u30ea\u30fc\u30af\u3042\u308a: \u6298\u3089\u305a\u306b\u89e3\u3051\u307e\u3059\n   \u629c\u3051\u9053: '+Solver.formatPath(rFoldless.path));
+        else if(rFoldless.status==='no-solution')lines.push('\u2705 \u30ea\u30fc\u30af\u306a\u3057\uff08\u6298\u3089\u306a\u3044\u3068\u89e3\u3051\u307e\u305b\u3093\uff09');
+        else lines.push('\u26a0\ufe0f \u30ea\u30fc\u30af: \u4e0d\u660e\uff08\u63a2\u7d22\u6253\u3061\u5207\u308a\uff09');
+      } else lines.push('\uff08\u53ef\u5426\u304c\u672a\u78ba\u5b9a\u306e\u305f\u3081\u3001\u30ea\u30fc\u30af\u5224\u5b9a\u306f\u30b9\u30ad\u30c3\u30d7\uff09');
+      if(r.status==='win'){
+        if(edSolverState.intendedPar==null)lines.push('\uff08\u60f3\u5b9a\u89e3\u672a\u8a18\u9332\u3002\u30c6\u30b9\u30c8\u30d7\u30ec\u30a4\u3067\u300c\u60f3\u5b9a\u89e3\u306e\u8a18\u9332\u300d\u3092ON\u306b\u3057\u3066\u89e3\u304f\u3068\u3001\u8fd1\u9053\u5224\u5b9a\u304c\u3067\u304d\u307e\u3059\uff09');
+        else if(r.par<edSolverState.intendedPar)lines.push('\u26a0\ufe0f \u8fd1\u9053\u3042\u308a: \u60f3\u5b9a'+edSolverState.intendedPar+'\u624b \u2192 \u6700\u77ed'+r.par+'\u624b\n   '+Solver.formatPath(r.path));
+        else lines.push('\u2705 \u8fd1\u9053\u306a\u3057\uff08\u60f3\u5b9a'+edSolverState.intendedPar+'\u624b / \u6700\u77ed'+r.par+'\u624b\uff09');
+      }
+      if(opts.deadlock&&!edSolverState.controller.aborted){
+        edSolverRenderResult(lines.join('\n')+'\n\n\u8a70\u307f\u691c\u51fa\u4e2d\u2026\uff08\u5168\u5c55\u958b\u306e\u305f\u3081\u6642\u9593\u304c\u304b\u304b\u308a\u307e\u3059\uff09');
+        const dl=await Solver.findDeadlocks({mode:'3d',world:Engine.cloneWorld(ed.world),dims:{...ed.dims}},rules,
+          {stateCap:opts.stateCap,timeMs:opts.timeMs,includeSwap:opts.includeSwap,signal:edSolverState.controller,
+           onProgress:p=>{e('edSolverProgress').textContent='\u8a70\u307f\u691c\u51fa\u4e2d\u2026 \u72b6\u614b\u6570: '+p.visited;}});
+        if(dl.status==='truncated')lines.push('\u26a0\ufe0f \u8a70\u307f\u691c\u51fa: \u672a\u78ba\u5b9a\uff08\u63a2\u7d22\u6253\u3061\u5207\u308a\u3002\u4e0a\u9650\u3092\u4e0a\u3052\u3066\u304f\u3060\u3055\u3044\uff09');
+        else lines.push('\u8a70\u307f\u691c\u51fa: \u5230\u9054\u53ef\u80fd\u306a\u8a70\u307f\u72b6\u614b '+dl.deadlockCount+'\u4ef6\n   \u73fe\u5728\u306e\u521d\u624b\u306e\u3046\u3061\u5371\u967a\u306a\u624b: '+(dl.riskyMoves.length?dl.riskyMoves.map(Solver.shortLabel).join(' '):'\u306a\u3057')+
+          '\n   \u73fe\u5728\u306e\u521d\u624b\u306e\u3046\u3061\u5373\u6b7b\u306e\u624b: '+(dl.deathMoves.length?dl.deathMoves.map(Solver.shortLabel).join(' '):'\u306a\u3057'));
+      }
+    }
+    edSolverSetRunning(false); edSolverRenderResult(lines.join('\n')); }
+  async function edSolverReplay(){ if(!edSolverState.lastSolution||edSolverState.lastSolution.status!=='win'||!ed)return;
+    const wasRecording=edSolverState.recording; edSolverState.recording=false;
+    if(!testing)edTestPlay(); else freshState(Engine.cloneWorld(ed.world),{...ed.dims});
+    await sleepUI(300);
+    for(const mv of edSolverState.lastSolution.path){
+      if(!state||state.status!=='play')break;
+      if(mv.type==='walk'||mv.type==='push'){
+        if(state.mode==='3d')move3D(mv.dx,mv.dz,mv.type==='push'?'push':'climb');
+        else{ const rev=FOLD[state.foldFront].rev; moveAvatars(mv.dx*(rev?-1:1),mv.type==='push'?'push':'climb'); }
+      } else if(mv.type==='fold'){ cam.locked=mv.front; toggleDim(); }
+      else if(mv.type==='unfold'){ toggleDim(); }
+      else if(mv.type==='swap'){ clickCell(mv.h1,mv.y1); await sleepUI(280); clickCell(mv.h2,mv.y2); }
+      await sleepUI(550);
+    }
+    edSolverState.recording=wasRecording; }
+  function edSolverSyncRecordBtn(){ const b=e('recIntended'); if(!b)return;
+    b.textContent='\u60f3\u5b9a\u89e3\u306e\u8a18\u9332: '+(edSolverState.recording?'ON\uff08\u8a18\u9332\u4e2d\u2026 '+edSolverState.recordedPath.length+'\u624b\uff09':'OFF'); }
+  function edSolverToggleRecording(){ if(!testing)return;
+    if(!edSolverState.recording){ edSolverState.recording=true; edSolverState.recordedPath=[]; Snd.ui(); }
+    else{ edSolverState.recording=false;
+      if(edSolverState.recordedPath.length>0){ edSolverState.intendedPar=edSolverState.recordedPath.length; edSolverState.intendedPath=edSolverState.recordedPath.slice();
+        edSolverRenderResult('\u60f3\u5b9a\u89e3\u3092\u8a18\u9332\u3057\u307e\u3057\u305f\uff08'+edSolverState.intendedPar+'\u624b\uff09\u3002\u30a8\u30c7\u30a3\u30bf\u306e\u300c\u8a2d\u8a08\u30c1\u30a7\u30c3\u30af\u300d\u3067\u8fd1\u9053\u5224\u5b9a\u306b\u4f7f\u308f\u308c\u307e\u3059\u3002'); }
+      Snd.ui(); }
+    edSolverSyncRecordBtn(); }
+  function edSolverRecordMove(mv){ if(!testing||!edSolverState.recording)return; edSolverState.recordedPath.push(mv); edSolverSyncRecordBtn(); }
+
+  function enterEditor(fromCurrent){ editing=true; testing=false; Snd.bgm(null);
+    let freshEd=false;
+    if(fromCurrent&&currentStageId&&STAGES&&STAGES[currentStageId]){ ed=edFromStage(STAGES[currentStageId]); freshEd=true; }
+    else if(!ed){ ed=edNew(); freshEd=true; }
+    if(freshEd)edSolverReset();
+    e('playView').style.display='none'; e('editor').style.display=''; e('backEdit').style.display='none'; e('recIntended').style.display='none';
+    syncMeta(); buildPalette(); edClampIdx(); edRender(); }
+  function exitEditor(){ editing=false; testing=false; e('editor').style.display='none'; e('playView').style.display=''; e('backEdit').style.display='none'; e('recIntended').style.display='none'; Snd.bgm('game'); currentStageId=preEditStageId; reset(); }
+  function edTestPlay(){ editing=false; testing=true; e('editor').style.display='none'; e('playView').style.display=''; e('backEdit').style.display=''; e('recIntended').style.display=''; Snd.bgm('game'); currentStageId=null; stageRules=rulesFromStage(ed.meta); setTutHint(ed.meta.hint||null); freshState(Engine.cloneWorld(ed.world),{...ed.dims});
+    edSolverState.recording=false; edSolverState.recordedPath=[]; edSolverSyncRecordBtn(); }
+  function syncMeta(){ e('edId').value=ed.meta.id;e('edName').value=ed.meta.name;e('edOrder').value=ed.meta.order;
+    e('edW').value=ed.dims.W;e('edH').value=ed.dims.H;e('edD').value=ed.dims.D;e('edAxis').value=ed.axis;
+    for(const k of['+z','-z','+x','-x'])e('edFold'+k).checked=ed.meta.foldAllow[k]!==false;
+    e('edSwapAllow').checked=ed.meta.swapAllow!==false;
+    e('edWalls').checked=ed.meta.walls!==false;
+    e('edHint').value=ed.meta.hint||''; }
+  function buildPalette(){const p=e('edPalette');p.innerHTML='';
+    for(const[t,label]of TYPES){const b=document.createElement('div');b.className='swatch'+(!ed.tool.erase&&!ed.tool.link&&ed.tool.type===t?' on':'');
+      b.innerHTML='<i style="background:'+COL[t]+'"></i>'+label;b.onclick=()=>{ed.tool.type=t;ed.tool.erase=false;ed.tool.link=false;ed.linkSel=null;buildPalette();edRender();};p.appendChild(b);}
+    const g=document.createElement('div');g.className='swatch'+(ed.tool.g?' on':'');g.textContent='重力'+(ed.tool.g?'あり':'なし');
+    g.onclick=()=>{ed.tool.g=!ed.tool.g;buildPalette();};p.appendChild(g);
+    const er=document.createElement('div');er.className='swatch'+(ed.tool.erase?' on':'');er.textContent='消しゴム';
+    er.onclick=()=>{ed.tool.erase=!ed.tool.erase;ed.tool.link=false;ed.linkSel=null;buildPalette();edRender();};p.appendChild(er);
+    const lk=document.createElement('div');lk.className='swatch'+(ed.tool.link?' on':'');lk.textContent='連結ツール';lk.title='押せるブロック2つを順にクリック（隣接同士でトグル：連結/分割）';
+    lk.onclick=()=>{ed.tool.link=!ed.tool.link;ed.tool.erase=false;ed.linkSel=null;buildPalette();edRender();};p.appendChild(lk); }
+  function sliceInfo(){const d=ed.dims;
+    if(ed.axis==='y')return{aMax:d.W,bMax:d.D,idxMax:d.H,aName:'x',bName:'z'};
+    if(ed.axis==='z')return{aMax:d.W,bMax:d.H,idxMax:d.D,aName:'x',bName:'y'};
+    return{aMax:d.D,bMax:d.H,idxMax:d.W,aName:'z',bName:'y'};}
+  function sliceXYZ(a,b){ if(ed.axis==='y')return[a,ed.idx,b]; if(ed.axis==='z')return[a,b,ed.idx]; return[ed.idx,b,a]; }
+  function edClampIdx(){const s=sliceInfo();ed.idx=Math.max(0,Math.min(s.idxMax-1,ed.idx));}
+  function edPlaceAt(a,b){const s=sliceInfo();if(a<0||b<0||a>=s.aMax||b>=s.bMax)return;const[x,y,z]=sliceXYZ(a,b);
+    if(ed.tool.link){ edLinkClick(x,y,z); return; }
+    if(ed.tool.erase)Engine.setVox(ed.world,x,y,z,null);
+    else{const t=ed.tool.type,g=(t==='avatar')?true:ed.tool.g;Engine.setVox(ed.world,x,y,z,t,g,0,(t==='push')?ed.nextGrp++:null);}
+    Engine.assignIds(ed.world);edRender();}
+  function edLinkClick(x,y,z){ const v=Engine.getVox(ed.world,x,y,z);
+    if(!v||v.t!=='push'){ ed.linkSel=null; edRender(); return; }                 // 押せるブロックのみ選択可
+    if(!ed.linkSel){ ed.linkSel={x,y,z}; edRender(); return; }                    // 1つ目を選択
+    const s=ed.linkSel;
+    if(s.x===x&&s.y===y&&s.z===z){ ed.linkSel=null; edRender(); return; }          // 同セルで解除
+    const v1=Engine.getVox(ed.world,s.x,s.y,s.z);
+    const adj=Math.abs(s.x-x)+Math.abs(s.y-y)+Math.abs(s.z-z)===1;
+    if(!adj||!v1||v1.t!=='push'){ ed.linkSel={x,y,z}; edRender(); return; }        // 面で隣接していない → 選び直し
+    if(v1.grp===v.grp){ const g0=v1.grp;                                          // 同一グループ → グループ全体を単体化
+      for(const vv of ed.world.vox.values())if(vv.t==='push'&&vv.grp===g0)vv.grp=ed.nextGrp++; }
+    else { const from=v.grp,to=v1.grp;                                            // 別グループ → 2グループを統合
+      for(const vv of ed.world.vox.values())if(vv.t==='push'&&vv.grp===from)vv.grp=to; }
+    ed.linkSel=null; Engine.assignIds(ed.world); edRender(); }
+  function worldToSlice(x,y,z){ if(ed.axis==='y')return y===ed.idx?[x,z]:null; if(ed.axis==='z')return z===ed.idx?[x,y]:null; return x===ed.idx?[z,y]:null; }
+  function edRenderGrid(){const s=sliceInfo();edCtx.clearRect(0,0,EDW,EDH);
+    const cell=Math.min(46,(EDW-16)/s.aMax,(EDH-16)/s.bMax),gw=cell*s.aMax,gh=cell*s.bMax,ox=(EDW-gw)/2,oy=(EDH-gh)/2;
+    const vFlip=(ed.axis==='y'); // 上から見たY軸スライスのみ、縦(z)の向きを3Dビューに合わせて反転
+    ed._grid={cell,ox,oy,bMax:s.bMax,vFlip};
+    const pxOf=(a)=>ox+a*cell, pyOf=(b)=>oy+(vFlip?b:(s.bMax-1-b))*cell;
+    const pushGrpAt=(a,b)=>{ if(a<0||b<0||a>=s.aMax||b>=s.bMax)return undefined; const[x,y,z]=sliceXYZ(a,b);const nv=Engine.getVox(ed.world,x,y,z);return (nv&&nv.t==='push')?nv.grp:undefined; };
+    for(let b=0;b<s.bMax;b++)for(let a=0;a<s.aMax;a++){const px=pxOf(a),py=pyOf(b);const[x,y,z]=sliceXYZ(a,b),v=Engine.getVox(ed.world,x,y,z);
+      edCtx.strokeStyle='rgba(110,124,150,.2)';edCtx.lineWidth=1;edCtx.strokeRect(px+.5,py+.5,cell-1,cell-1);
+      if(v){edCtx.fillStyle=shade(COL[v.t],.92);edCtx.fillRect(px+2,py+2,cell-4,cell-4);
+        if(v.t==='avatar'||v.t==='goal'||v.t==='hazard'){edCtx.fillStyle='#0d0d12';edCtx.font='10px '+mono;edCtx.textAlign='center';edCtx.textBaseline='middle';edCtx.fillText(v.t==='avatar'?'A':v.t==='goal'?'G':'H',px+cell/2,py+cell/2+3);edCtx.textAlign='start';edCtx.textBaseline='alphabetic';}
+        gMark(edCtx,px+Math.min(11,cell*0.28),py+Math.min(11,cell*0.28),v.g,Math.min(3.1,cell*0.13));
+        if(v.t==='push'){ // 連結グループの輪郭（同一グループ間は線を引かず一体に見せる）
+          const G=v.grp, upB=vFlip?b-1:b+1, dnB=vFlip?b+1:b-1;
+          edCtx.strokeStyle='#7aa2ff';edCtx.lineWidth=2;edCtx.beginPath();
+          if(pushGrpAt(a+1,b)!==G){edCtx.moveTo(px+cell,py);edCtx.lineTo(px+cell,py+cell);}
+          if(pushGrpAt(a-1,b)!==G){edCtx.moveTo(px,py);edCtx.lineTo(px,py+cell);}
+          if(pushGrpAt(a,upB)!==G){edCtx.moveTo(px,py);edCtx.lineTo(px+cell,py);}
+          if(pushGrpAt(a,dnB)!==G){edCtx.moveTo(px,py+cell);edCtx.lineTo(px+cell,py+cell);}
+          edCtx.stroke();
+        }}}
+    if(ed.tool.link){ // 連結ツールの選択・候補ハイライト
+      if(ed.linkSel){ const sp=worldToSlice(ed.linkSel.x,ed.linkSel.y,ed.linkSel.z);
+        if(sp){ const px=pxOf(sp[0]),py=pyOf(sp[1]);edCtx.strokeStyle=COL.avatar;edCtx.lineWidth=2.6;edCtx.strokeRect(px+1,py+1,cell-2,cell-2); }
+        for(let b=0;b<s.bMax;b++)for(let a=0;a<s.aMax;a++){const[x,y,z]=sliceXYZ(a,b);
+          if(Math.abs(x-ed.linkSel.x)+Math.abs(y-ed.linkSel.y)+Math.abs(z-ed.linkSel.z)!==1)continue;
+          const nv=Engine.getVox(ed.world,x,y,z);if(!nv||nv.t!=='push')continue;
+          const px=pxOf(a),py=pyOf(b);edCtx.strokeStyle='#7aa2ff';edCtx.setLineDash([4,3]);edCtx.lineWidth=2.2;edCtx.strokeRect(px+1,py+1,cell-2,cell-2);edCtx.setLineDash([]);}}}
+    e('edGridLab').textContent='スライス編集  '+ed.axis.toUpperCase()+'='+ed.idx+'（横='+s.aName+'／縦='+s.bName+'）'+(ed.tool.link?'  ● 連結ツール：押せる2つを順にクリック':'');
+    e('edIdx').textContent=ed.axis.toUpperCase()+' '+ed.idx+' / '+(s.idxMax-1);}
+  function edRender3D(){const w=ed.world,d=ed.dims,c=[(d.W-1)/2,(d.H-1)/2,(d.D-1)/2],B=basis(edCam.yaw,edCam.pitch);
+    const proj=p=>{const rel=V.sub(p,c);return{x:E3W/2+V.dot(rel,B.r)*edCam.zoom,y:E3H/2-V.dot(rel,B.u)*edCam.zoom};};
+    ed._pickFaces=[]; // Shift+クリックでの面ピック用（voxel位置・法線・画面クアッド・奥行き）
+    ed3ctx.clearRect(0,0,E3W,E3H);ed3ctx.strokeStyle='rgba(110,124,150,.16)';ed3ctx.lineWidth=1;
+    for(let x=-0.5;x<=d.W-0.5;x++){const a=proj([x,-0.5,-0.5]),b=proj([x,-0.5,d.D-0.5]);ed3ctx.beginPath();ed3ctx.moveTo(a.x,a.y);ed3ctx.lineTo(b.x,b.y);ed3ctx.stroke();}
+    for(let z=-0.5;z<=d.D-0.5;z++){const a=proj([-0.5,-0.5,z]),b=proj([d.W-0.5,-0.5,z]);ed3ctx.beginPath();ed3ctx.moveTo(a.x,a.y);ed3ctx.lineTo(b.x,b.y);ed3ctx.stroke();}
+    const list=[];for(const[k,v]of w.vox){const[x,y,z]=k.split(",").map(Number);list.push({x,y,z,t:v.t,id:v.id,g:v.g,d:V.dot(V.sub([x,y,z],c),B.f)});}
+    list.sort((a,b)=>b.d-a.d);const at=(x,y,z)=>w.vox.get(x+","+y+","+z)||null,na=fc=>fc.n[0]!==0?0:(fc.n[1]!==0?1:2);
+    for(const vx of list){const faces=[];
+      for(const fc of FACES){if(V.dot(fc.n,B.dir)<=1e-6)continue;if(at(vx.x+fc.n[0],vx.y+fc.n[1],vx.z+fc.n[2]))continue;
+        const pts=fc.c.map(o=>proj([vx.x+o[0],vx.y+o[1],vx.z+o[2]]));
+        ed3ctx.fillStyle=shade(COL[vx.t],0.55+0.45*Math.max(0,V.dot(fc.n,LIGHT)));
+        ed3ctx.beginPath();ed3ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<4;i++)ed3ctx.lineTo(pts[i].x,pts[i].y);ed3ctx.closePath();ed3ctx.fill();faces.push({fc,pts});
+        ed._pickFaces.push({x:vx.x,y:vx.y,z:vx.z,n:fc.n,pts,d:vx.d});}
+      ed3ctx.strokeStyle='rgba(0,0,0,.42)';ed3ctx.lineWidth=1;
+      for(const{fc,pts}of faces){const nax=na(fc);for(let i=0;i<4;i++){const p0=fc.c[i],p1=fc.c[(i+1)%4],m=[(p0[0]+p1[0])/2,(p0[1]+p1[1])/2,(p0[2]+p1[2])/2];
+        const dd=[0,0,0];for(let ax=0;ax<3;ax++){if(ax!==nax&&Math.abs(m[ax])>0.4)dd[ax]=Math.sign(m[ax]);}
+        const nb=at(vx.x+dd[0],vx.y+dd[1],vx.z+dd[2]),internal=nb&&nb.id===vx.id&&vx.t!=='avatar'&&!at(vx.x+dd[0]+fc.n[0],vx.y+dd[1]+fc.n[1],vx.z+dd[2]+fc.n[2]);
+        if(!internal){const a=pts[i],b=pts[(i+1)%4];ed3ctx.beginPath();ed3ctx.moveTo(a.x,a.y);ed3ctx.lineTo(b.x,b.y);ed3ctx.stroke();}}}
+      const cp=proj([vx.x,vx.y,vx.z]);gMark(ed3ctx,cp.x-6,cp.y-7,vx.g,2.8);}}
+  // クアッド(凸四角形)内に点(px,py)が含まれるか（画面座標での符号一致判定）
+  function pointInQuad(pts,px,py){ let sign=0;
+    for(let i=0;i<4;i++){ const a=pts[i],b=pts[(i+1)%4]; const cr=(b.x-a.x)*(py-a.y)-(b.y-a.y)*(px-a.x);
+      if(cr!==0){ const s=cr>0?1:-1; if(sign===0)sign=s; else if(s!==sign)return false; } }
+    return true; }
+  // Shift+クリックでのピック: 画面座標(px,py)に当たる最前面(dが最小)の面を1つ返す
+  function edPickFace(px,py){ let best=null,bd=Infinity;
+    for(const f of (ed._pickFaces||[])){ if(pointInQuad(f.pts,px,py)&&f.d<bd){bd=f.d;best=f;} }
+    return best; }
+  // Shift+クリック: 消しゴム選択中はクリックしたブロックを消去、それ以外は面の外側に現在のパレット設定で新規配置
+  function edFacePlaceOrErase(px,py){ const hit=edPickFace(px,py); if(!hit)return;
+    if(ed.tool.erase){ Engine.setVox(ed.world,hit.x,hit.y,hit.z,null); Engine.assignIds(ed.world); edRender(); return; }
+    const nx=hit.x+hit.n[0],ny=hit.y+hit.n[1],nz=hit.z+hit.n[2];
+    if(nx<0||nx>=ed.dims.W||ny<0||ny>=ed.dims.H||nz<0||nz>=ed.dims.D)return;      // 範囲外には置かない
+    if(Engine.getVox(ed.world,nx,ny,nz))return;                                  // 既に何かあれば置かない（安全側）
+    const t=ed.tool.type,g=(t==='avatar')?true:ed.tool.g;
+    Engine.setVox(ed.world,nx,ny,nz,t,g,0,(t==='push')?ed.nextGrp++:null);
+    Engine.assignIds(ed.world); edRender(); }
+  function edRenderFolds(){const host=e('edFolds');host.innerHTML='';
+    for(const fr of['+z','-z','+x','-x']){const fold=FOLD[fr],S=92,wrap=document.createElement('div');wrap.style.textAlign='center';
+      const cvs=document.createElement('canvas');cvs.width=S*DPR;cvs.height=S*DPR;cvs.style.width=S+'px';cvs.style.height=S+'px';
+      const cx=cvs.getContext('2d');cx.scale(DPR,DPR);const g=Engine.compress(ed.world,fold.axis,fold.front);
+      cx.clearRect(0,0,S,S);const cell=Math.min(18,(S-8)/g.W2,(S-8)/g.H2),ox=(S-cell*g.W2)/2,oy=(S-cell*g.H2)/2;
+      for(let y=0;y<g.H2;y++)for(let h=0;h<g.W2;h++){const col=fold.rev?(g.W2-1-h):h,px=ox+col*cell,py=oy+(g.H2-1-y)*cell,c=g.cells.get(h+","+y);
+        if(!c){cx.strokeStyle='rgba(110,124,150,.16)';cx.strokeRect(px,py,cell,cell);continue;}
+        cx.fillStyle=shade(COL[c.t],.92);cx.fillRect(px,py,cell-1,cell-1);
+        cx.fillStyle=(c.t==='push'||c.t==='goal')?'#10130c':'#f3f5fb';cx.font='9px '+mono;cx.textAlign='center';cx.textBaseline='middle';cx.fillText(String(c.count),px+cell/2,py+cell/2);cx.textAlign='start';cx.textBaseline='alphabetic';}
+      const lab=document.createElement('div');lab.className='keyhint';lab.textContent=fr;wrap.appendChild(cvs);wrap.appendChild(lab);host.appendChild(wrap);}}
+  function edRender(){ edClampIdx(); edRenderGrid(); edRender3D(); edRenderFolds(); }
+  function edResize(){const d=ed.dims,nw=Engine.makeWorld(d.W,d.H,d.D,ed.meta.walls===false);
+    for(const[k,v]of ed.world.vox){const[x,y,z]=k.split(",").map(Number);if(x<d.W&&y<d.H&&z<d.D)Engine.setVox(nw,x,y,z,v.t,v.g,0,v.grp);}
+    Engine.assignIds(nw);ed.world=nw;edClampIdx();edRender();}
+  function edExport(){
+    // pushのグループを正規化。2個以上のグループは番号を振る。
+    // 単体（グループ1個）は、隣に押せるブロックが無い＝真に孤立している場合のみ省略可能（互換）。
+    // 隣に押せるブロックがある単体は、省略すると読込時の互換連結（隣接grpなし同士の自動連結）で
+    // 意図せず連結されてしまうため、誤連結防止のため明示的にgrpを出力する。
+    const cnt=new Map(); for(const v of ed.world.vox.values())if(v.t==='push'&&v.grp!=null)cnt.set(v.grp,(cnt.get(v.grp)||0)+1);
+    const hasPushNeighbor=(x,y,z)=>{ for(const[dx,dy,dz]of[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]){
+      const nv=Engine.getVox(ed.world,x+dx,y+dy,z+dz); if(nv&&nv.t==='push')return true; } return false; };
+    const gmap=new Map(); let gi=1; for(const[grp,n]of cnt)if(n>=2)gmap.set(grp,gi++);
+    const vox=[];for(const[k,v]of ed.world.vox){const[x,y,z]=k.split(",").map(Number);
+      const row=[x,y,z,v.t,!!v.g];
+      if(v.t==='push'&&v.grp!=null){
+        if(gmap.has(v.grp))row.push(gmap.get(v.grp));
+        else if(hasPushNeighbor(x,y,z)){ if(!gmap.has(v.grp))gmap.set(v.grp,gi++); row.push(gmap.get(v.grp)); }
+      }
+      vox.push(row);}
+    vox.sort((p,q)=>p[1]-q[1]||p[0]-q[0]||p[2]-q[2]);
+    const st={schema:1,id:ed.meta.id,name:ed.meta.name,tier:ed.meta.tier||1,order:ed.meta.order||0,dims:{...ed.dims},voxels:vox};
+    const fa=ed.meta.foldAllow||{}, faOut={}; let faCustom=false;
+    for(const k of['+x','-x','+z','-z']){ if(fa[k]===false){faOut[k]=false;faCustom=true;} }
+    if(faCustom)st.foldAllow=faOut;
+    if(ed.meta.swapAllow===false)st.swapAllow=false;
+    if(ed.meta.walls===false)st.walls=false;
+    if(ed.meta.hint&&ed.meta.hint.trim())st.hint=ed.meta.hint.trim();
+    const blob=new Blob([JSON.stringify(st,null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=u;a.download=(ed.meta.id||'stage')+'.json';a.click();URL.revokeObjectURL(u);}
+  function edImportFile(ev){const f=ev.target.files[0];if(!f)return;const rd=new FileReader();
+    rd.onload=()=>{try{const st=JSON.parse(rd.result);ed=edFromStage(st);syncMeta();buildPalette();edRender();}catch(err){alert('JSON読み込みに失敗しました');}};
+    rd.readAsText(f);ev.target.value='';}
+
+  edCv.addEventListener('pointerdown',ev=>{if(!ed||!ed._grid)return;const r=edCv.getBoundingClientRect(),sc=EDW/r.width,mx=(ev.clientX-r.left)*sc,my=(ev.clientY-r.top)*sc;
+    const{cell,ox,oy,bMax,vFlip}=ed._grid;const a=Math.floor((mx-ox)/cell),brow=Math.floor((my-oy)/cell),b=vFlip?brow:(bMax-1-brow);edPlaceAt(a,b);});
+  let e3d=false,e3x=0,e3y=0;
+  ed3.addEventListener('pointerdown',ev=>{
+    if(ev.shiftKey){ const r=ed3.getBoundingClientRect(),sc=E3W/r.width; edFacePlaceOrErase((ev.clientX-r.left)*sc,(ev.clientY-r.top)*sc); return; }
+    e3d=true;e3x=ev.clientX;e3y=ev.clientY;ed3.setPointerCapture(ev.pointerId);});
+  ed3.addEventListener('pointermove',ev=>{if(!e3d||ev.shiftKey)return;edCam.yaw-=(ev.clientX-e3x)*0.01;edCam.pitch=Math.max(-1.35,Math.min(1.35,edCam.pitch+(ev.clientY-e3y)*0.01));e3x=ev.clientX;e3y=ev.clientY;edRender3D();});
+  ed3.addEventListener('pointerup',()=>{e3d=false;});
+  ed3.addEventListener('wheel',ev=>{ev.preventDefault();edCam.zoom=Math.max(16,Math.min(80,edCam.zoom*(ev.deltaY<0?1.1:0.9)));edRender3D();},{passive:false});
+  e('edAxis').onchange=ev=>{ed.axis=ev.target.value;ed.idx=0;edRender();};
+  e('edPrev').onclick=()=>{ed.idx--;edClampIdx();edRender();};
+  e('edNext').onclick=()=>{ed.idx++;edClampIdx();edRender();};
+  for(const D of['W','H','D'])e('ed'+D).onchange=ev=>{const n=Math.max(1,Math.min(12,parseInt(ev.target.value)||1));ed.dims[D]=n;ev.target.value=n;edResize();};
+  e('edId').onchange=ev=>ed.meta.id=(ev.target.value.trim()||'stageXX');
+  e('edName').onchange=ev=>ed.meta.name=ev.target.value;
+  e('edHint').onchange=ev=>ed.meta.hint=ev.target.value;
+  e('edOrder').onchange=ev=>ed.meta.order=parseInt(ev.target.value)||0;
+  for(const k of['+z','-z','+x','-x'])e('edFold'+k).onchange=ev=>{ed.meta.foldAllow[k]=ev.target.checked;};
+  e('edSwapAllow').onchange=ev=>{ed.meta.swapAllow=ev.target.checked;};
+  e('edWalls').onchange=ev=>{ed.meta.walls=ev.target.checked; ed.world.open=!ev.target.checked; edRender();};
+  e('edExport').onclick=edExport;
+  e('edImport').onclick=()=>e('edFile').click();
+  e('edFile').onchange=edImportFile;
+  e('edTest').onclick=edTestPlay;
+  e('edExit').onclick=exitEditor;
+  e('edSolverRun').onclick=edSolverRun;
+  e('edSolverCheck').onclick=edSolverCheck;
+  e('edSolverReplay').onclick=edSolverReplay;
+  e('edSolverCancel').onclick=edSolverCancel;
+  e('recIntended').onclick=edSolverToggleRecording;
+  e('editBtn').onclick=()=>{preEditStageId=currentStageId; enterEditor(true);};
+  e('backEdit').onclick=()=>enterEditor(false);
+
+  applySettings(); startDemo(); init();
+}
+if(typeof document!=='undefined'){ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startApp);else startApp(); }
+</script>
+</body>
+</html>

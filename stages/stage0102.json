@@ -1,0 +1,1 @@
+{"schema":1,"id":"stage0102","name":"畳ム","tier":1,"order":102,"dims":{"W":3,"H":2,"D":3},"hint":"Spaceで奥行きを畳んで2Dへ。3Dで渡れない隙間も、畳めば隣になる。","voxels":[[0,0,0,"ground",false],[1,0,0,"ground",false],[2,0,0,"ground",false],[0,0,2,"ground",false],[1,0,2,"ground",false],[2,0,2,"ground",false],[0,1,0,"avatar",true],[1,1,2,"goal",false]],"par":2}

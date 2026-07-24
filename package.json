@@ -1,0 +1,19 @@
+{
+  "name": "vanishing-depth",
+  "version": "1.0.0",
+  "description": "奥行キ消失点 — VANISHING DEPTH（次元圧縮パズル）",
+  "private": true,
+  "scripts": {
+    "test": "node dev-tests/solver_test.js && node dev-tests/score_test.js",
+    "test:solver": "node dev-tests/solver_test.js",
+    "test:score": "node dev-tests/score_test.js",
+    "test:page": "node dev-tests/page_smoke_test.js && node dev-tests/hint_visual_test.js",
+    "test:all": "npm run test && npm run test:page",
+    "pars": "node dev-tests/compute_pars.js",
+    "build": "python3 build_stages.py",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "jsdom": "^29.0.0"
+  }
+}
