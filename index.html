@@ -124,6 +124,23 @@
   #optOverlay{position:fixed;inset:0;z-index:60;background:rgba(6,8,13,.72);display:none;align-items:center;justify-content:center}
   #optOverlay .opts{margin:0;max-width:340px;width:min(340px,88vw);max-height:82vh;overflow:auto;padding:20px 22px}
   #optClose{margin-top:16px;width:100%}
+  .verBadge{position:absolute;left:16px;bottom:14px;z-index:3;font-size:11px;letter-spacing:.14em;color:#5f6f8e;
+    background:rgba(28,33,46,.6);border:1px solid #333e5c;border-radius:4px;padding:5px 12px;cursor:pointer;
+    transition:border-color .15s,color .15s,background .15s}
+  .verBadge:hover{border-color:#7aa2ff;color:#cfd8ea;background:rgba(40,48,68,.85)}
+  #changelogOverlay{position:fixed;inset:0;z-index:60;background:rgba(6,8,13,.72);display:none;align-items:center;justify-content:center}
+  #changelogOverlay .opts{margin:0;max-width:460px;width:min(460px,90vw);max-height:82vh;overflow:auto;padding:20px 22px}
+  #changelogClose{margin-top:16px;width:100%}
+  .clEntry{border-bottom:1px solid #232c42;padding:13px 2px}
+  .clEntry:first-child{padding-top:4px}
+  .clEntry:last-child{border-bottom:none;padding-bottom:2px}
+  .clVer{display:flex;align-items:baseline;gap:9px;margin-bottom:7px}
+  .clVer b{font-size:14px;letter-spacing:.1em;color:#cfe0ff}
+  .clEntry.cur .clVer b{color:#7aa2ff}
+  .clVer .clDate{font-size:11px;color:#5f6f8e;margin-left:auto}
+  .clTag{font-size:10px;letter-spacing:.08em;color:#0b0d12;background:#7aa2ff;border-radius:3px;padding:1px 6px}
+  .clEntry ul{margin:0;padding-left:17px}
+  .clEntry li{font-size:12.5px;color:#aeb9d0;margin:4px 0;line-height:1.55}
 </style>
 </head>
 <body>
@@ -148,6 +165,7 @@
       </div>
       <div class="tFoot">DIMENSION COMPRESSION PUZZLE</div>
     </div>
+    <button id="verBtn" class="verBadge" title="更新履歴を見る">beta1.0</button>
   </div>
   <div id="selectScreen" class="overlay" style="display:none">
     <div class="sWrap">
@@ -191,6 +209,13 @@
       <label class="optrow"><input type="checkbox" id="optAnim"> アニメーション演出</label>
       <label class="optrow"><input type="checkbox" id="optShake"> 画面の揺れ</label>
       <button id="optClose" class="tBtn small">閉じる</button>
+    </div>
+  </div>
+  <div id="changelogOverlay">
+    <div class="panel opts">
+      <div class="lab">更新履歴</div>
+      <div id="changelogBody"></div>
+      <button id="changelogClose" class="primary">閉じる</button>
     </div>
   </div>
   <div class="legend">
@@ -1099,6 +1124,33 @@ function startApp(){
     e('statsOverlay').style.display='flex'; }
   document.getElementById('mStats').onclick=openStats;
   document.getElementById('statsClose').onclick=()=>{Snd.ui();document.getElementById('statsOverlay').style.display='none';};
+
+  /* ===== 更新履歴（バージョン） =====
+     コミットするたびに、この配列の先頭へ新しいエントリを追加する（新しい順）。
+     current:true は必ず先頭の1件だけに付ける。VERSION は先頭から自動導出。 */
+  const CHANGELOG=[
+    {version:'beta1.0', date:'2026-07-24', current:true, changes:[
+      '初回リリース。全14章47ステージ（チュートリアル7章＋本編7章）。',
+      'コアメカニクス：3D↔2Dの圧縮/再構成、均質化、数字入れ替え、押し、重力、連結グループ。',
+      'ソルバー・スコア（星評価）・次の一手ヒント・記録/統計を搭載。',
+      'GitHubでのバージョン管理を開始し、GitHub Pagesで公開。',
+      'タイトル左下にバージョン表示と、この更新履歴を追加。',
+    ]},
+  ];
+  const VERSION=CHANGELOG[0].version;
+  const escHtml=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  function openChangelog(){ Snd.ui();
+    document.getElementById('changelogBody').innerHTML=CHANGELOG.map(en=>
+      '<div class="clEntry'+(en.current?' cur':'')+'">'
+      +'<div class="clVer"><b>'+escHtml(en.version)+'</b>'
+      +(en.current?'<span class="clTag">現在</span>':'')
+      +'<span class="clDate">'+escHtml(en.date)+'</span></div>'
+      +'<ul>'+en.changes.map(c=>'<li>'+escHtml(c)+'</li>').join('')+'</ul></div>'
+    ).join('');
+    document.getElementById('changelogOverlay').style.display='flex'; }
+  document.getElementById('verBtn').textContent=VERSION;
+  document.getElementById('verBtn').onclick=openChangelog;
+  document.getElementById('changelogClose').onclick=()=>{Snd.ui();document.getElementById('changelogOverlay').style.display='none';};
   document.getElementById('titleBtn').onclick=()=>{Snd.ui();closeOptions();buildStageList();showScreen('select');};
   document.getElementById('mEdit').onclick=()=>{Snd.select();showScreen('game');Snd.bgm(null);preEditStageId=currentStageId;enterEditor(false);};
   function snapshot(){ undoStack.push({mode:state.mode,world:state.world?Engine.cloneWorld(state.world):null,
